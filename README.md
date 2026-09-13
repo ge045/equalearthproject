@@ -10,7 +10,7 @@ bottom. Change that via `INITIAL_ROTATION` in `src/index.md`.
 | ⌘-drag / Ctrl-drag | Spin the map about the viewing axis, up to fully upside down. |
 | Roll slider | The same axis, absolute. Stays in sync with the gesture. |
 | Hover / click | Country **or ocean** name, then its Wikipedia article. |
-| View picker | 50 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
+| View picker | 51 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
 
 Because `d3.geoEqualEarth().rotate()` transforms spherical coordinates *before*
 projecting, rotating yields a genuinely **oblique** Equal Earth rather than a
@@ -79,7 +79,7 @@ the browser, and saying when something was not good enough.
 
 Worth knowing if you rely on this:
 
-- The **explanatory texts** attached to the 50 preset views are AI-written
+- The **explanatory texts** attached to the 51 preset views are AI-written
   popular-science prose. They have not been fact-checked by a domain expert.
   Treat them as a starting point, not as a citable source.
 - The **test suite is real** — 248 tests, written test-first for most modules,

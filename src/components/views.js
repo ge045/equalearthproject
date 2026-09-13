@@ -283,6 +283,11 @@ export const VIEW_GROUPS = [
         explanation: "The Suez Canal cuts through Egypt to join the Mediterranean and the Red Sea, sparing ships the entire voyage around Africa. A substantial share of global seaborne trade passes through a waterway only a couple of hundred metres wide. In 2021 a single grounded container ship blocked it for six days and disrupted supply chains worldwide. Chokepoints like this are invisible on a political map and obvious the moment you frame the region."
       },
       {
+        name: "Strait of Hormuz", rotation: centreOn(56.4, 26.6), wiki: "Strait of Hormuz",
+        note: "Nearly all Gulf oil leaves through this one gap.",
+        explanation: "Almost all the oil leaving the Persian Gulf has to pass through this single strait. At its narrowest it is about 33 kilometres across, and the usable shipping lanes are narrower still. Roughly a fifth of the world's oil consumption travels through it every day. A few pipelines bypass it, but they cannot carry anything close to that volume, which is why any threat to close it moves prices worldwide."
+      },
+      {
         name: "Panama & the isthmus", rotation: centreOn(-80, 9), wiki: "Isthmus of Panama",
         note: "The land bridge that split an ocean and joined two continents.",
         explanation: "A few million years ago the seafloor rose and closed the gap between North and South America. That did two enormous things. It cut the direct connection between the Atlantic and Pacific, rerouting ocean currents and probably helping trigger ice ages. It also opened a bridge over which animals moved between the continents in both directions, reshaping the wildlife of both. The canal reopened the sea route for ships in 1914."
