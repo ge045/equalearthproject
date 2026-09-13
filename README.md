@@ -1,0 +1,113 @@
+# Oblique Equal Earth
+
+An equal-area world map you re-centre by **rotating the globe**, not by zooming.
+It opens **upside down on the prime meridian** — Greenwich centred, north at the
+bottom. Change that via `INITIAL_ROTATION` in `src/index.md`.
+
+| Gesture | Effect |
+|---|---|
+| Drag | Swing the world under the projection. Whatever you grab stays under the cursor, over the poles and out the other side. |
+| ⌘-drag / Ctrl-drag | Spin the map about the viewing axis, up to fully upside down. |
+| Roll slider | The same axis, absolute. Stays in sync with the gesture. |
+| Hover / click | Country **or ocean** name, then its Wikipedia article. |
+| View picker | 50 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
+
+Because `d3.geoEqualEarth().rotate()` transforms spherical coordinates *before*
+projecting, rotating yields a genuinely **oblique** Equal Earth rather than a
+panned one: the projection's zero-distortion line travels with you, so whichever
+region you bring to the centre is the one drawn most faithfully. Watch the
+graticule — once the parallels stop being horizontal lines, you are looking at
+an oblique aspect.
+
+Dragging composes quaternions rather than adding degrees to Euler angles, which
+is what lets the map travel past a pole instead of jamming against it, and keeps
+horizontal dragging following the cursor even when the world is upside down.
+
+Country fills are chosen at build time by colouring the border graph, so no two
+neighbouring countries share a colour.
+
+## Quick start
+
+```bash
+npm install
+npm run dev      # http://127.0.0.1:3000
+```
+
+The first run downloads and derives the map data; Framework caches the results
+under `src/.observablehq/cache/`, so later runs are instant. `npm run clean`
+drops that cache.
+
+```bash
+npm test         # 248 tests
+npm run build    # static site -> dist/
+```
+
+`dist/` must be served over HTTP — the data loads via `fetch`, so opening
+`dist/index.html` from the filesystem will not work.
+
+Optional, for headless renders of the map to PNG:
+
+```bash
+npm install --no-save --legacy-peer-deps canvas
+npm run snapshot
+```
+
+## Data
+
+| Layer | Source |
+|---|---|
+| Countries | [world-atlas](https://github.com/topojson/world-atlas) `countries-50m`, derived from Natural Earth |
+| Country names, Wikidata ids | Natural Earth `ne_50m_admin_0_countries` |
+| Oceans and seas | Natural Earth `ne_50m_geography_marine_polys` — 118 named water bodies |
+
+[Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/) is in the
+public domain.
+
+## Docs
+
+- [`docs/notes.md`](docs/notes.md) — traps this codebase has already fallen into, most of which produce a passing build *and* a broken page.
+
+## How this was built
+
+**This project is entirely vibe coded.** Every line of source, test, comment and
+documentation in this repository was written by **Claude Opus 5**
+(model `claude-opus-5`, Anthropic) running in
+[Claude Code](https://claude.com/claude-code), in a single conversation in
+September 2026. The human contribution was direction, review and bug reports:
+deciding what to build, choosing between options, spotting what looked wrong in
+the browser, and saying when something was not good enough.
+
+Worth knowing if you rely on this:
+
+- The **explanatory texts** attached to the 50 preset views are AI-written
+  popular-science prose. They have not been fact-checked by a domain expert.
+  Treat them as a starting point, not as a citable source.
+- The **test suite is real** — 248 tests, written test-first for most modules,
+  and several guard failure modes that a green build would otherwise hide. It is
+  the main reason to trust the code rather than the prose.
+- Where the AI made mistakes, they are recorded in `docs/notes.md` rather than
+  quietly fixed, because most of them are traps anyone would hit again.
+
+## Licence
+
+Copyright (C) 2026 Georg Ogris.
+
+Licensed under the **GNU Affero General Public License, version 3 or later**
+(AGPL-3.0-or-later). See [`LICENSE`](LICENSE).
+
+The AGPL is copyleft: you may use, study, modify and redistribute this, but
+derivative works must carry the same licence — and under section 13, if you run
+a modified version on a **network server**, you must offer its source to the
+users of that server. For a map that is meant to be deployed rather than
+distributed, that is the clause that matters.
+
+### Third-party
+
+All runtime dependencies are permissively licensed and unaffected by the above;
+their own licences continue to govern them.
+
+| Package | Licence |
+|---|---|
+| `@observablehq/framework` | ISC |
+| `d3`, `d3-geo`, `topojson-client`, `world-atlas`, `versor` | ISC |
+| `vitest`, `rimraf` | MIT / ISC |
