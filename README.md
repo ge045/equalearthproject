@@ -16,6 +16,7 @@ every country still covers its true share of the page.*
 | Roll slider | The same axis, absolute. Stays in sync with the gesture. |
 | Hover / click | Country **or ocean** name, then its Wikipedia article. |
 | View picker | 51 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
+| Light / dark | Follows your system by default. |
 
 Because `d3.geoEqualEarth().rotate()` transforms spherical coordinates *before*
 projecting, rotating yields a genuinely **oblique** Equal Earth rather than a
@@ -43,7 +44,7 @@ under `src/.observablehq/cache/`, so later runs are instant. `npm run clean`
 drops that cache.
 
 ```bash
-npm test         # 248 tests
+npm test         # 287 tests
 npm run build    # static site -> dist/
 ```
 
@@ -56,6 +57,17 @@ Optional, for headless renders of the map to PNG:
 npm install --no-save --legacy-peer-deps canvas
 npm run snapshot
 ```
+
+## Light and dark
+
+The map follows your system preference and repaints live when it changes.
+Buttons override it, and an embedder can pin either so the map matches the page
+around it.
+
+<p>
+  <img src="docs/img/map-light.png" alt="The map in light mode" width="49%">
+  <img src="docs/img/map-dark.png" alt="The same view in dark mode" width="49%">
+</p>
 
 ## Data
 

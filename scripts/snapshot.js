@@ -16,7 +16,7 @@
 import {mkdirSync, readFileSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import * as d3 from "d3";
-import {drawScene, paletteColour} from "../src/components/scene.js";
+import {THEMES, drawScene} from "../src/components/scene.js";
 import {ALL_VIEWS} from "../src/components/views.js";
 
 const {createCanvas} = await import("canvas").catch(() => {
@@ -36,7 +36,7 @@ const scene = {
   marine,
   countries,
   hovered: null,
-  colorFor: (f) => paletteColour(d3.schemePastel1, f)
+  theme: THEMES.light
 };
 
 const WIDTH = 960, HEIGHT = 500;
@@ -45,6 +45,9 @@ const named = (name) => ALL_VIEWS.find((v) => v.name === name);
 const shots = [
   // The opening view: Greenwich front, upside down. Mirrors INITIAL_ROTATION.
   {name: "00-opening-view", rotate: [0, 0, 180]},
+  // The two stills used in the README.
+  {name: "readme-light", rotate: [-10, -25, 0], theme: "light"},
+  {name: "readme-dark", rotate: [-10, -25, 0], theme: "dark"},
   // A spread of preset views, drawn straight from the catalogue.
   ...[
     "Atlantic centred", "Pacific centred", "North Pole", "South Pole",
@@ -75,12 +78,13 @@ for (const shot of shots) {
     .rotate(shot.rotate);
   const path = d3.geoPath(projection, context);
 
+  const theme = THEMES[shot.theme ?? "light"];
   const hovered = shot.hover ? countries.find(shot.hover)
     : shot.hoverMarine ? marine.find(shot.hoverMarine)
     : null;
-  drawScene(context, path, {...scene, hovered}, width, height);
+  drawScene(context, path, {...scene, hovered, theme}, width, height);
 
   const file = join(outDir, `${shot.name}.png`);
   writeFileSync(file, canvas.toBuffer("image/png"));
-  console.log(`${file}  rotate=[${shot.rotate.map((v) => v.toFixed(0))}]`);
+  console.log(`${file}  rotate=[${shot.rotate.map((v) => v.toFixed(0))}] ${shot.theme ?? "light"}`);
 }

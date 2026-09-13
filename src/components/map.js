@@ -6,10 +6,15 @@
 // the Free Software Foundation, either version 3 of the License, or (at your
 // option) any later version. See the LICENSE file, or <https://www.gnu.org/licenses/>.
 
-import * as d3 from "npm:d3";
+// Specific d3 modules rather than the whole of d3: the embeddable bundle
+// would otherwise carry a few hundred kilobytes of unused scales and shapes.
+import {geoEqualEarth, geoGraticule10, geoPath} from "npm:d3-geo";
+import {drag} from "npm:d3-drag";
+import {select} from "npm:d3-selection";
 import {HitTester} from "./picker.js";
 import {countryKey, lookupCountry} from "./registry.js";
-import {THEME, drawScene, paletteColour} from "./scene.js";
+import {THEMES, drawScene} from "./scene.js";
+import {resolveTheme, watchTheme} from "./theme.js";
 import {DEFAULT_SENSITIVITY, freeRotation, rollBy, slerpRotation, withRoll} from "./rotation.js";
 
 /**
@@ -30,6 +35,8 @@ export function createMap({
   scale = 170,
   sensitivity = DEFAULT_SENSITIVITY,
   initialRotation = [0, 0, 0],
+  theme: themePreference = "auto",
+  onThemeChange,
   onRollChange,
   invalidation
 } = {}) {
@@ -75,21 +82,19 @@ export function createMap({
   });
   container.appendChild(tooltip);
 
-  const projection = d3.geoEqualEarth().scale(scale).translate([width / 2, height / 2]);
-  const path = d3.geoPath(projection, context);
-  const hitPath = d3.geoPath(projection, hitContext);
-  const graticule = d3.geoGraticule10();
+  const projection = geoEqualEarth().scale(scale).translate([width / 2, height / 2]);
+  const path = geoPath(projection, context);
+  const hitPath = geoPath(projection, hitContext);
+  const graticule = geoGraticule10();
   const sphere = {type: "Sphere"};
 
-  // The palette index is chosen at build time by graph colouring, so bordering
-  // countries never share a fill.
-  const colorFor = (feature) => paletteColour(d3.schemePastel1, feature);
 
   // Everything pickable, in paint order. Countries are rendered into the hit
   // buffer after the marine areas, so land overwrites sea and wins the pick
   // wherever a coastline is ambiguous.
   const pickable = [...marine, ...countries];
 
+  let theme = resolveTheme(themePreference);
   let rotation = [...initialRotation];
   let hovered = null;
   let sceneDirty = true;
@@ -97,7 +102,7 @@ export function createMap({
   let frame = null;
 
   function scene() {
-    return {sphere, graticule, marine, countries, hovered, colorFor};
+    return {sphere, graticule, marine, countries, hovered, theme: THEMES[theme]};
   }
 
   function render() {
@@ -118,6 +123,7 @@ export function createMap({
   }
 
   const hitTester = new HitTester(hitContext, width, height);
+  let stopWatchingTheme = watchTheme(themePreference, applyTheme);
 
   function setRotation(next, {notifyRoll = true} = {}) {
     const rollChanged = notifyRoll && next[2] !== rotation[2];
@@ -127,6 +133,16 @@ export function createMap({
     // Free rotation changes roll too, so the slider has to be told or it will
     // snap the map back the next time it is touched.
     if (rollChanged) onRollChange?.(rotation[2]);
+  }
+
+  function applyTheme(next) {
+    if (next === theme) return;
+    theme = next;
+    sceneDirty = true;
+    schedule();
+    // The canvas repaints itself, but whatever chrome surrounds the map has to
+    // be told so it can restyle too.
+    onThemeChange?.(theme);
   }
 
   function setHovered(next) {
@@ -149,8 +165,8 @@ export function createMap({
     return spherical;
   }
 
-  d3.select(canvas).call(
-    d3.drag()
+  select(canvas).call(
+    drag()
       // d3-drag's default filter rejects ctrlKey to avoid macOS secondary
       // click, which would make Ctrl-drag (the Windows/Linux roll modifier)
       // dead on arrival. Only non-primary buttons are filtered here.
@@ -215,11 +231,23 @@ export function createMap({
     if (meta?.wikiUrl) window.open(meta.wikiUrl, "_blank", "noopener");
   });
 
-  // Framework re-runs cells on edit; without this the old rAF keeps painting.
-  invalidation?.then(() => {
+  /**
+   * Release everything this map holds: pending frames, the running transition
+   * and the system theme subscription. Embedders unmounting the map must be
+   * able to stop it entirely, and a leaked matchMedia listener keeps the whole
+   * closure — data included — alive.
+   */
+  container.destroy = () => {
     if (frame !== null) cancelAnimationFrame(frame);
+    frame = null;
     stopTransition();
-  });
+    stopWatchingTheme();
+    stopWatchingTheme = () => {};
+    container.remove();
+  };
+
+  // Framework re-runs cells on edit; without this the old rAF keeps painting.
+  invalidation?.then(container.destroy);
 
   // --- Animated transitions between preset views -------------------------
 
@@ -258,6 +286,16 @@ export function createMap({
     };
     transitionFrame = requestAnimationFrame(step);
   };
+
+  /** Repaint in a different palette. Accepts "auto", "light" or "dark". */
+  container.setTheme = (preference) => {
+    stopWatchingTheme();
+    stopWatchingTheme = watchTheme(preference, applyTheme);
+    applyTheme(resolveTheme(preference));
+  };
+
+  /** The palette currently painted: "light" or "dark". */
+  container.getTheme = () => theme;
 
   /** Current [yaw, pitch, roll]; a copy, so callers cannot mutate our state. */
   container.getRotation = () => [...rotation];

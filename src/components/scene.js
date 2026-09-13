@@ -15,17 +15,46 @@
  */
 import {countryKey} from "./registry.js";
 
-export const THEME = {
-  ocean: "#d4e6f1",
-  // At rest the named marine areas barely register — just enough to keep the
-  // ocean from being a flat slab. All the colour change happens on hover, where
-  // the water deepens to a darker blue rather than taking the land's amber.
-  marine: "rgba(255, 255, 255, 0.10)",
-  marineHighlight: "rgba(17, 61, 102, 0.38)",
-  graticule: "rgba(255, 255, 255, 0.45)",
-  border: "#ffffff",
-  highlight: "#f39c12",
-  outline: "rgba(31, 62, 87, 0.6)"
+/**
+ * Two palettes. The graph colouring assigns each country an index into `land`,
+ * so both themes must offer the same number of entries — nine — or a country
+ * would change colour relative to its neighbours when the theme flips.
+ *
+ * The land colours live here rather than coming from d3's schemes so that the
+ * embeddable bundle need not carry d3-scale-chromatic, and so the dark set can
+ * be chosen deliberately rather than by washing out a light one.
+ */
+export const THEMES = {
+  light: {
+    ocean: "#d4e6f1",
+    // At rest the named marine areas barely register — just enough to keep the
+    // ocean from being a flat slab. All the colour change happens on hover.
+    marine: "rgba(255, 255, 255, 0.10)",
+    marineHighlight: "rgba(17, 61, 102, 0.38)",
+    graticule: "rgba(255, 255, 255, 0.45)",
+    border: "#ffffff",
+    highlight: "#f39c12",
+    outline: "rgba(31, 62, 87, 0.6)",
+    land: [
+      "#fbb4ae", "#b3cde3", "#ccebc5", "#decbe4", "#fed9a6",
+      "#ffffcc", "#e5d8bd", "#fddaec", "#e8e8e8"
+    ]
+  },
+  dark: {
+    ocean: "#0e1b26",
+    marine: "rgba(255, 255, 255, 0.05)",
+    marineHighlight: "rgba(126, 190, 236, 0.30)",
+    graticule: "rgba(255, 255, 255, 0.16)",
+    // A dark hairline rather than white: white borders on dark land glare and
+    // visually thicken every coastline.
+    border: "#0b141c",
+    highlight: "#f5a623",
+    outline: "rgba(150, 190, 220, 0.55)",
+    land: [
+      "#8c4f52", "#3f5f7d", "#4a6b4f", "#5d4d6b", "#8a6136",
+      "#7d7a45", "#6d6250", "#83566e", "#4f5559"
+    ]
+  }
 };
 
 /**
@@ -47,7 +76,8 @@ export function paletteColour(scheme, feature) {
  * @param {(d: any) => void} path issues path commands for one GeoJSON object
  */
 export function drawScene(context, path, scene, width, height) {
-  const {sphere, graticule, marine, countries, hovered, colorFor} = scene;
+  const {sphere, graticule, marine, countries, hovered} = scene;
+  const theme = scene.theme ?? THEMES.light;
 
   // Highlight by registry key, not object identity: Natural Earth splits the
   // Pacific and Atlantic into same-named halves, and Australia is two features
@@ -63,7 +93,7 @@ export function drawScene(context, path, scene, width, height) {
   // Ocean base
   context.beginPath();
   path(sphere);
-  context.fillStyle = THEME.ocean;
+  context.fillStyle = theme.ocean;
   context.fill();
 
   // Named marine areas, barely tinted so the ocean is not a flat slab and the
@@ -71,14 +101,14 @@ export function drawScene(context, path, scene, width, height) {
   for (const area of marine) {
     context.beginPath();
     path(area);
-    context.fillStyle = isHovered(area) ? THEME.marineHighlight : THEME.marine;
+    context.fillStyle = isHovered(area) ? theme.marineHighlight : theme.marine;
     context.fill();
   }
 
   // Graticule
   context.beginPath();
   path(graticule);
-  context.strokeStyle = THEME.graticule;
+  context.strokeStyle = theme.graticule;
   context.lineWidth = 0.5;
   context.stroke();
 
@@ -86,9 +116,9 @@ export function drawScene(context, path, scene, width, height) {
   for (const feature of countries) {
     context.beginPath();
     path(feature);
-    context.fillStyle = isHovered(feature) ? THEME.highlight : colorFor(feature);
+    context.fillStyle = isHovered(feature) ? theme.highlight : paletteColour(theme.land, feature);
     context.fill();
-    context.strokeStyle = THEME.border;
+    context.strokeStyle = theme.border;
     context.lineWidth = 0.5;
     context.stroke();
   }
@@ -96,7 +126,7 @@ export function drawScene(context, path, scene, width, height) {
   // Sphere outline last, so nothing overdraws the edge of the world
   context.beginPath();
   path(sphere);
-  context.strokeStyle = THEME.outline;
+  context.strokeStyle = theme.outline;
   context.lineWidth = 1;
   context.stroke();
 }

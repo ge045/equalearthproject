@@ -15,6 +15,9 @@ export default defineConfig({
     // unit-tested in Node without a second set of import specifiers.
     alias: {
       "npm:d3": "d3",
+      "npm:d3-geo": "d3-geo",
+      "npm:d3-drag": "d3-drag",
+      "npm:d3-selection": "d3-selection",
       "npm:topojson-client": "topojson-client",
       "npm:versor": "versor"
     }

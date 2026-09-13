@@ -90,6 +90,16 @@ live in `src/components/angles.js` for exactly this reason.
 **Never stroke the hit-test buffer.** A blended edge decodes to a third,
 nonexistent feature index.
 
+## Theming
+
+**Two palettes with the same number of land colours.** Graph colouring assigns
+each country an index into `theme.land`, so a theme with a different number of
+entries would change a country's colour relative to its neighbours when the
+theme flips.
+
+**Unsubscribe from `matchMedia`.** A leaked listener keeps the whole map closure
+alive, map data included. `createMap().destroy()` exists for exactly this.
+
 ## Testing
 
 Tests use `d3-geo` itself as the oracle where possible — projecting a point to

@@ -382,3 +382,82 @@ describe("transitionTo", () => {
     expect(map.getRotation()).not.toEqual([120, 0, 0]);
   });
 });
+
+describe("theming", () => {
+  function mountThemed(extra = {}) {
+    HTMLCanvasElement.prototype.getContext = (type, opts) =>
+      opts?.willReadFrequently ? stubContext(null) : stubContext(null);
+    return createMap({
+      countries: [country("040", "Austria")], marine: [],
+      registry: {}, width: 960, height: 500, ...extra
+    });
+  }
+
+  /** matchMedia stand-in we can flip at will. */
+  function systemPrefersDark(dark) {
+    const listeners = new Set();
+    const query = {
+      matches: dark,
+      addEventListener: (_, fn) => listeners.add(fn),
+      removeEventListener: (_, fn) => listeners.delete(fn)
+    };
+    vi.stubGlobal("matchMedia", () => query);
+    return {flip: (d) => { query.matches = d; for (const l of [...listeners]) l({matches: d}); }};
+  }
+
+  test("defaults to light when the system has no dark preference", () => {
+    systemPrefersDark(false);
+    expect(mountThemed().getTheme()).toBe("light");
+  });
+
+  test("starts dark when the system prefers dark", () => {
+    systemPrefersDark(true);
+    expect(mountThemed().getTheme()).toBe("dark");
+  });
+
+  test("honours a pinned theme regardless of the system", () => {
+    systemPrefersDark(true);
+    expect(mountThemed({theme: "light"}).getTheme()).toBe("light");
+  });
+
+  test("follows the system flipping to dark while open", () => {
+    const system = systemPrefersDark(false);
+    const map = mountThemed();
+    system.flip(true);
+    expect(map.getTheme()).toBe("dark");
+  });
+
+  test("ignores the system flipping when pinned", () => {
+    const system = systemPrefersDark(false);
+    const map = mountThemed({theme: "light"});
+    system.flip(true);
+    expect(map.getTheme()).toBe("light");
+  });
+
+  test("switches palette on demand", () => {
+    systemPrefersDark(false);
+    const map = mountThemed();
+    map.setTheme("dark");
+    expect(map.getTheme()).toBe("dark");
+  });
+
+  test("can be handed back to the system after being pinned", () => {
+    const system = systemPrefersDark(false);
+    const map = mountThemed({theme: "dark"});
+    map.setTheme("auto");
+    expect(map.getTheme()).toBe("light");
+    system.flip(true);
+    expect(map.getTheme()).toBe("dark");
+  });
+
+  test("stops following the system once the cell is invalidated", async () => {
+    const system = systemPrefersDark(false);
+    let invalidate;
+    const invalidation = new Promise((r) => { invalidate = r; });
+    const map = mountThemed({invalidation});
+    invalidate();
+    await invalidation;
+    system.flip(true);
+    expect(map.getTheme()).toBe("light");
+  });
+});

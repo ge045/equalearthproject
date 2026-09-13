@@ -8,7 +8,9 @@
 
 export default {
   title: "Oblique Equal Earth",
-  theme: "air",
+  // A light/dark pair: Framework switches the page chrome with the reader's
+  // prefers-color-scheme, and the map follows the same signal independently.
+  theme: ["air", "near-midnight"],
   root: "src",
   toc: false,
   pager: false,

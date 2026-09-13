@@ -7,7 +7,7 @@
 // option) any later version. See the LICENSE file, or <https://www.gnu.org/licenses/>.
 
 import {describe, expect, test} from "vitest";
-import {THEME, drawScene, paletteColour} from "../src/components/scene.js";
+import {THEMES, drawScene, paletteColour} from "../src/components/scene.js";
 
 /** Records drawing calls, capturing the style in force at the moment of each. */
 function recordingContext() {
@@ -32,7 +32,7 @@ function scene(overrides = {}) {
     marine: [sea("Pacific Ocean"), sea("Coral Sea")],
     countries: [feature("040"), feature("250")],
     hovered: null,
-    colorFor: () => "#cccccc",
+    theme: THEMES.light,
     ...overrides
   };
 }
@@ -49,48 +49,48 @@ describe("drawScene", () => {
   test("lays the ocean down first", () => {
     const ctx = recordingContext();
     drawScene(ctx, () => {}, scene(), 960, 500);
-    expect(fills(ctx)[0]).toBe(THEME.ocean);
+    expect(fills(ctx)[0]).toBe(THEMES.light.ocean);
   });
 
   test("draws marine areas beneath the countries", () => {
     const ctx = recordingContext();
     drawScene(ctx, () => {}, scene(), 960, 500);
     const order = fills(ctx);
-    expect(order.lastIndexOf(THEME.marine)).toBeLessThan(order.indexOf("#cccccc"));
+    expect(order.lastIndexOf(THEMES.light.marine)).toBeLessThan(order.indexOf(THEMES.light.land[0]));
   });
 
   test("tints every named marine area so the ocean is not a flat slab", () => {
     const ctx = recordingContext();
     drawScene(ctx, () => {}, scene(), 960, 500);
-    expect(fills(ctx).filter((s) => s === THEME.marine)).toHaveLength(2);
+    expect(fills(ctx).filter((s) => s === THEMES.light.marine)).toHaveLength(2);
   });
 
   test("fills the hovered country with the highlight colour", () => {
     const ctx = recordingContext();
     const base = scene();
     drawScene(ctx, () => {}, {...base, hovered: base.countries[1]}, 960, 500);
-    expect(fills(ctx)).toContain(THEME.highlight);
+    expect(fills(ctx)).toContain(THEMES.light.highlight);
   });
 
   test("fills a hovered marine area with its own highlight colour", () => {
     const ctx = recordingContext();
     const base = scene();
     drawScene(ctx, () => {}, {...base, hovered: base.marine[0]}, 960, 500);
-    expect(fills(ctx)).toContain(THEME.marineHighlight);
+    expect(fills(ctx)).toContain(THEMES.light.marineHighlight);
   });
 
   test("highlights only the hovered marine area", () => {
     const ctx = recordingContext();
     const base = scene();
     drawScene(ctx, () => {}, {...base, hovered: base.marine[0]}, 960, 500);
-    expect(fills(ctx).filter((s) => s === THEME.marineHighlight)).toHaveLength(1);
+    expect(fills(ctx).filter((s) => s === THEMES.light.marineHighlight)).toHaveLength(1);
   });
 
   test("leaves unhovered countries their palette colour", () => {
     const ctx = recordingContext();
     const base = scene();
     drawScene(ctx, () => {}, {...base, hovered: base.countries[1]}, 960, 500);
-    expect(fills(ctx).filter((s) => s === "#cccccc")).toHaveLength(1);
+    expect(fills(ctx).filter((s) => s === THEMES.light.land[0])).toHaveLength(1);
   });
 
   // Five 50m features share id `undefined` (Kosovo, Somaliland, N. Cyprus,
@@ -100,19 +100,19 @@ describe("drawScene", () => {
     const ctx = recordingContext();
     const base = scene({countries: [feature(undefined), feature(undefined)]});
     drawScene(ctx, () => {}, {...base, hovered: base.countries[0]}, 960, 500);
-    expect(fills(ctx).filter((s) => s === THEME.highlight)).toHaveLength(1);
+    expect(fills(ctx).filter((s) => s === THEMES.light.highlight)).toHaveLength(1);
   });
 
   test("uses no highlight colour when nothing is hovered", () => {
     const ctx = recordingContext();
     drawScene(ctx, () => {}, scene(), 960, 500);
-    expect(fills(ctx)).not.toContain(THEME.highlight);
+    expect(fills(ctx)).not.toContain(THEMES.light.highlight);
   });
 
   test("finishes with the sphere outline on top", () => {
     const ctx = recordingContext();
     drawScene(ctx, () => {}, scene(), 960, 500);
-    expect(ctx.calls.at(-1)).toMatchObject({op: "stroke", style: THEME.outline});
+    expect(ctx.calls.at(-1)).toMatchObject({op: "stroke", style: THEMES.light.outline});
   });
 
   test("issues a path for every drawable in the scene", () => {
@@ -133,14 +133,14 @@ describe("grouped highlighting", () => {
     const ctx = recordingContext();
     const marine = [named("Pacific Ocean"), named("Pacific Ocean"), named("Coral Sea")];
     drawScene(ctx, () => {}, scene({marine, hovered: marine[0]}), 960, 500);
-    expect(fills(ctx).filter((s) => s === THEME.marineHighlight)).toHaveLength(2);
+    expect(fills(ctx).filter((s) => s === THEMES.light.marineHighlight)).toHaveLength(2);
   });
 
   test("leaves marine areas with a different name untinted", () => {
     const ctx = recordingContext();
     const marine = [named("Pacific Ocean"), named("Coral Sea")];
     drawScene(ctx, () => {}, scene({marine, hovered: marine[0]}), 960, 500);
-    expect(fills(ctx).filter((s) => s === THEME.marine)).toHaveLength(1);
+    expect(fills(ctx).filter((s) => s === THEMES.light.marine)).toHaveLength(1);
   });
 
   // Australia is two features (mainland and Tasmania) sharing ISO 036.
@@ -148,7 +148,7 @@ describe("grouped highlighting", () => {
     const ctx = recordingContext();
     const parts = [feature("036"), feature("036"), feature("250")];
     drawScene(ctx, () => {}, scene({countries: parts, hovered: parts[0]}), 960, 500);
-    expect(fills(ctx).filter((s) => s === THEME.highlight)).toHaveLength(2);
+    expect(fills(ctx).filter((s) => s === THEMES.light.highlight)).toHaveLength(2);
   });
 
   // ...but features with no key at all must still fall back to identity, or the
@@ -157,7 +157,7 @@ describe("grouped highlighting", () => {
     const ctx = recordingContext();
     const unkeyed = [feature(undefined), feature(undefined)];
     drawScene(ctx, () => {}, scene({countries: unkeyed, hovered: unkeyed[0]}), 960, 500);
-    expect(fills(ctx).filter((s) => s === THEME.highlight)).toHaveLength(1);
+    expect(fills(ctx).filter((s) => s === THEMES.light.highlight)).toHaveLength(1);
   });
 });
 
@@ -186,39 +186,39 @@ describe("ocean palette", () => {
   // Resting state: the named marine areas must not restyle the ocean. They are
   // there to be picked up on hover, not to draw a patchwork of tinted boxes.
   test("leaves the resting ocean essentially as it is", () => {
-    const base = parseColor(THEME.ocean);
-    const resting = composite(THEME.marine, THEME.ocean);
+    const base = parseColor(THEMES.light.ocean);
+    const resting = composite(THEMES.light.marine, THEMES.light.ocean);
     expect(Math.abs(luminance(base) - luminance(resting))).toBeLessThan(12);
   });
 
   test("deepens the water on hover rather than lightening it", () => {
-    const resting = composite(THEME.marine, THEME.ocean);
-    const hovered = composite(THEME.marineHighlight, THEME.ocean);
+    const resting = composite(THEMES.light.marine, THEMES.light.ocean);
+    const hovered = composite(THEMES.light.marineHighlight, THEMES.light.ocean);
     expect(luminance(hovered)).toBeLessThan(luminance(resting));
   });
 
   test("hovers to a blue, not a neutral grey or a warm colour", () => {
-    const {r, g, b} = parseColor(THEME.marineHighlight);
+    const {r, g, b} = parseColor(THEMES.light.marineHighlight);
     expect(b).toBeGreaterThan(r);
     expect(b).toBeGreaterThan(g);
   });
 
   test("darkens enough on hover to be unmistakable", () => {
-    const resting = composite(THEME.marine, THEME.ocean);
-    const hovered = composite(THEME.marineHighlight, THEME.ocean);
+    const resting = composite(THEMES.light.marine, THEMES.light.ocean);
+    const hovered = composite(THEMES.light.marineHighlight, THEMES.light.ocean);
     expect(luminance(resting) - luminance(hovered)).toBeGreaterThan(25);
   });
 
   test("but not so far that the ocean turns black", () => {
-    const hovered = composite(THEME.marineHighlight, THEME.ocean);
+    const hovered = composite(THEMES.light.marineHighlight, THEMES.light.ocean);
     expect(luminance(hovered)).toBeGreaterThan(110);
   });
 
   // Distance in colour, not luminance: two colours can be equally bright and
   // still obviously different, so brightness alone is the wrong discriminator.
   test("the hovered ocean is clearly distinct from the resting ocean", () => {
-    const resting = composite(THEME.marine, THEME.ocean);
-    const hovered = composite(THEME.marineHighlight, THEME.ocean);
+    const resting = composite(THEMES.light.marine, THEMES.light.ocean);
+    const hovered = composite(THEMES.light.marineHighlight, THEMES.light.ocean);
     const distance = Math.hypot(
       resting.r - hovered.r, resting.g - hovered.g, resting.b - hovered.b
     );
@@ -226,8 +226,8 @@ describe("ocean palette", () => {
   });
 
   test("keeps the ocean hover distinct from the country highlight", () => {
-    const ocean = composite(THEME.marineHighlight, THEME.ocean);
-    const country = parseColor(THEME.highlight);
+    const ocean = composite(THEMES.light.marineHighlight, THEMES.light.ocean);
+    const country = parseColor(THEMES.light.highlight);
     const distance = Math.hypot(ocean.r - country.r, ocean.g - country.g, ocean.b - country.b);
     expect(distance).toBeGreaterThan(60);
   });
@@ -255,5 +255,66 @@ describe("paletteColour", () => {
 
   test("is a pure lookup — the same index always gives the same fill", () => {
     expect(paletteColour(scheme, coloured(2))).toBe(paletteColour(scheme, coloured(2)));
+  });
+});
+
+describe("dark theme", () => {
+  test("ships a dark palette alongside the light one", () => {
+    expect(Object.keys(THEMES).sort()).toEqual(["dark", "light"]);
+  });
+
+  test("gives both themes the same number of land colours", () => {
+    expect(THEMES.dark.land).toHaveLength(THEMES.light.land.length);
+  });
+
+  test("keeps nine land colours, matching the graph colouring", () => {
+    expect(THEMES.light.land).toHaveLength(9);
+  });
+
+  test("uses a darker ocean than the light theme", () => {
+    expect(luminance(parseColor(THEMES.dark.ocean)))
+      .toBeLessThan(luminance(parseColor(THEMES.light.ocean)));
+  });
+
+  test("uses darker land than the light theme", () => {
+    const mean = (t) => t.land.reduce((sum, c) => sum + luminance(parseColor(c)), 0) / t.land.length;
+    expect(mean(THEMES.dark)).toBeLessThan(mean(THEMES.light));
+  });
+
+  test("keeps every dark land colour distinguishable from the dark ocean", () => {
+    const ocean = parseColor(THEMES.dark.ocean);
+    for (const colour of THEMES.dark.land) {
+      const c = parseColor(colour);
+      const distance = Math.hypot(c.r - ocean.r, c.g - ocean.g, c.b - ocean.b);
+      expect(distance, colour).toBeGreaterThan(30);
+    }
+  });
+
+  test("keeps borders visible against dark land rather than white-on-dark glare", () => {
+    const border = luminance(parseColor(THEMES.dark.border));
+    expect(border).toBeLessThan(luminance(parseColor(THEMES.light.border)));
+  });
+
+  test("still deepens the water on hover in dark mode", () => {
+    const resting = composite(THEMES.dark.marine, THEMES.dark.ocean);
+    const hovered = composite(THEMES.dark.marineHighlight, THEMES.dark.ocean);
+    const distance = Math.hypot(
+      resting.r - hovered.r, resting.g - hovered.g, resting.b - hovered.b
+    );
+    expect(distance).toBeGreaterThan(25);
+  });
+
+  test("paints the scene with whichever theme it is handed", () => {
+    const ctx = recordingContext();
+    drawScene(ctx, () => {}, scene({theme: THEMES.dark}), 960, 500);
+    expect(ctx.calls.filter((c) => c.op === "fill").map((c) => c.style)[0])
+      .toBe(THEMES.dark.ocean);
+  });
+
+  test("takes land fills from the theme it is handed", () => {
+    const ctx = recordingContext();
+    drawScene(ctx, () => {}, scene({theme: THEMES.dark}), 960, 500);
+    expect(ctx.calls.filter((c) => c.op === "fill").map((c) => c.style))
+      .toContain(THEMES.dark.land[0]);
   });
 });
