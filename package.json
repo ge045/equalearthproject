@@ -1,0 +1,38 @@
+{
+  "name": "equalearthproject",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Interactive oblique Equal Earth canvas map",
+  "license": "AGPL-3.0-or-later",
+  "author": "Georg Ogris",
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/georg.ogris/equalearthproject.git"
+  },
+  "homepage": "https://gitlab.com/georg.ogris/equalearthproject",
+  "scripts": {
+    "dev": "observable preview",
+    "build": "observable build",
+    "deploy": "observable deploy",
+    "clean": "rimraf src/.observablehq/cache",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "snapshot": "node scripts/snapshot.js"
+  },
+  "dependencies": {
+    "@observablehq/framework": "^1.13.3",
+    "d3": "^7.9.0",
+    "topojson-client": "^3.1.0",
+    "versor": "^0.2.0",
+    "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "rimraf": "^5.0.10",
+    "vitest": "^2.1.9",
+    "d3-geo": "^3.1.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
