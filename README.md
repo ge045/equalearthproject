@@ -4,6 +4,11 @@ An equal-area world map you re-centre by **rotating the globe**, not by zooming.
 It opens **upside down on the prime meridian** — Greenwich centred, north at the
 bottom. Change that via `INITIAL_ROTATION` in `src/index.md`.
 
+![The map in an oblique, south-up orientation](docs/example.png)
+
+*Nothing above is upside down by accident. That is the same Earth, turned — and
+every country still covers its true share of the page.*
+
 | Gesture | Effect |
 |---|---|
 | Drag | Swing the world under the projection. Whatever you grab stays under the cursor, over the poles and out the other side. |
