@@ -27,8 +27,8 @@ import {createInfoBadge} from "./info-badge.js";
 export const TAG = "equal-earth-map";
 
 /**
- * Where the opening turn ends: an oblique view centred near 12°W 12°S and
- * rolled 144°, which lands Africa in the middle and upside down.
+ * Where the opening turn ends: an oblique view centred near 10°W 6°S and
+ * rolled 131°, which lands Africa in the middle and upside down.
  *
  * Deliberately oblique rather than merely inverted. A plain 180° roll is still
  * the *normal* aspect with the page turned over — the parallels stay straight
@@ -36,7 +36,7 @@ export const TAG = "equal-earth-map";
  * projection's own frame away from the graticule, which is the thing this
  * project exists to show, and it is visible immediately in the curved grid.
  */
-export const DEFAULT_ROTATION = [12, 12, 144];
+export const DEFAULT_ROTATION = [10, 6, 131];
 
 /**
  * Where the opening drift starts: the north-up, Atlantic-centred view everyone

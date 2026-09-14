@@ -2,7 +2,7 @@
 
 An equal-area world map you re-centre by **rotating the globe**, not by zooming.
 It opens on the familiar north-up view and then **turns**, settling on an
-oblique orientation — centred near 12°W 12°S and rolled 144°, which puts Africa
+oblique orientation — centred near 10°W 6°S and rolled 131°, which puts Africa
 in the middle and upside down. That one movement is the argument: the view you
 know is an orientation, not a fact. Watch the graticule curve as it goes; that
 is the projection's own frame tilting away from the Earth's, which a simple
@@ -99,7 +99,7 @@ import {mount} from "/equal-earth.js";
 const controller = await mount(document.querySelector("#map"), {
   dataBase: "/equal-earth-data",
   theme: "dark",            // "auto" | "light" | "dark"
-  rotation: [12, 12, 144],  // where the opening turn ends
+  rotation: [10, 6, 131],   // where the opening turn ends
   intro: true,              // false to skip the opening turn
   introDuration: 4000
 });

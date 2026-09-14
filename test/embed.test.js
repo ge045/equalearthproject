@@ -508,7 +508,7 @@ describe("the axis controls", () => {
 
 describe("the default opening view", () => {
   test("is the documented oblique orientation", () => {
-    expect(DEFAULT_ROTATION).toEqual([12, 12, 144]);
+    expect(DEFAULT_ROTATION).toEqual([10, 6, 131]);
   });
 
   test("is genuinely oblique, not merely upside down", () => {
