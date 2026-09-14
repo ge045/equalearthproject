@@ -74,6 +74,23 @@ index to `properties.colour`; read it through `paletteColour()` in `scene.js`.
 Never re-derive a fill from the key, or the browser and `scripts/snapshot.js`
 drift apart, which they once did silently.
 
+## Privacy
+
+**The built site must make no third-party requests.** Framework injects
+`preconnect`, `preload` and `stylesheet` links to `fonts.googleapis.com` and
+`fonts.gstatic.com` by default, which hands every visitor's IP to Google before
+anything renders — treated as a GDPR violation by LG München I (20.01.2022,
+3 O 17493/20). `globalStylesheets: []` in `observablehq.config.js` removes them.
+
+The links come from `defaultGlobalStylesheets()` in Framework's config, **not**
+from the theme stylesheet, so setting `style:` does not remove them. Nothing is
+lost: `--serif` already falls back through Iowan Old Style, Palatino, Times and
+the platform serif, all local.
+
+A plain `<a href>` to another origin is a different thing and stays — nothing is
+fetched until the reader follows it. `test/no-third-party.test.js` enforces the
+distinction.
+
 ## Embedding
 
 **The page uses the same `<equal-earth-map>` an embedder would.** That is

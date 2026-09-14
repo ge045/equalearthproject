@@ -11,6 +11,17 @@ export default {
   // A light/dark pair: Framework switches the page chrome with the reader's
   // prefers-color-scheme, and the map follows the same signal independently.
   theme: ["air", "near-midnight"],
+  // No third-party subresources. Framework otherwise injects preconnect,
+  // preload and stylesheet links to fonts.googleapis.com / fonts.gstatic.com
+  // for Source Serif 4, which sends every visitor's IP address to Google
+  // before a single pixel is drawn. Embedders operating under the GDPR cannot
+  // ship that (LG München I, 20.01.2022, 3 O 17493/20), and the built page
+  // should be safe to deploy without anyone having to post-process it.
+  //
+  // Nothing is lost visually: Framework's --serif already falls back through
+  // Iowan Old Style, Palatino Linotype, Times New Roman and finally the
+  // platform serif, all of which are local.
+  globalStylesheets: [],
   root: "src",
   toc: false,
   pager: false,

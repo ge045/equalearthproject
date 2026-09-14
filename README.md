@@ -44,7 +44,7 @@ under `src/.observablehq/cache/`, so later runs are instant. `npm run clean`
 drops that cache.
 
 ```bash
-npm test         # 318 tests
+npm test         # 325 tests
 npm run build    # static site -> dist/
 ```
 
@@ -108,6 +108,17 @@ about 4.8 MB — so `data-base` points at wherever you serve it from.
 This project's own page mounts the same component, so the embedding path is
 exercised every time the site is opened rather than being a second, untested
 way of assembling the same parts.
+
+## Privacy
+
+The built site makes **no third-party requests**. Observable Framework loads
+Source Serif 4 from Google Fonts by default, which sends every visitor's IP
+address to Google before the page renders; `globalStylesheets: []` removes it
+and the local serif fallback takes over. External links in the page are ordinary
+`<a href>` anchors — nothing is fetched unless you follow them.
+
+`test/no-third-party.test.js` fails the build if a third-party subresource ever
+reappears, so this is safe to deploy without post-processing the output.
 
 ## Data
 
