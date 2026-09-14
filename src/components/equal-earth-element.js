@@ -68,11 +68,19 @@ export const STYLES = `
 }
 .eq-canvas-wrap { position: relative; }
 .eq-controls {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.9rem;
+  display: flex; align-items: flex-start; gap: 0.9rem;
   margin: 0.6rem 0 0.2rem; font-size: 13px; color: var(--eq-muted);
 }
-.eq-axis { display: flex; align-items: center; gap: 0.4rem; flex: 1 1 9rem; }
-.eq-controls input[type="range"] { flex: 1 1 6rem; min-width: 5rem; accent-color: var(--eq-accent); }
+.eq-axes { display: flex; flex-direction: column; gap: 0.3rem; flex: 1 1 auto; max-width: 34rem; }
+/* label, slider, value — one grid so the three rows line up as a column. */
+.eq-axis { display: grid; grid-template-columns: 3.2rem 1fr auto; align-items: center; gap: 0.5rem; }
+.eq-axis-name { color: var(--eq-fg); }
+.eq-controls input[type="range"] { width: 100%; min-width: 4rem; accent-color: var(--eq-accent); }
+.eq-value {
+  min-width: 3.4rem; text-align: right;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+  color: var(--eq-fg);
+}
 .eq-info {
   display: flex; gap: 0.5rem; align-items: flex-start;
   font-size: 12.5px; color: var(--eq-muted); max-width: 72ch;
@@ -169,6 +177,12 @@ export async function mount(host, options = {}) {
   root.className = "eq-root";
   root.dataset.theme = resolveTheme(theme);
 
+  const inputs = new Map();
+  const values = new Map();
+
+  /** A real minus sign and tabular figures, so the column never jitters. */
+  const formatAngle = (degrees) => `${Math.round(degrees) < 0 ? "\u2212" : ""}${Math.abs(Math.round(degrees))}\u00b0`;
+
   const map = createMap({
     countries: loaded.countries.features,
     marine: loaded.marine?.features ?? [],
@@ -182,9 +196,11 @@ export async function mount(host, options = {}) {
       // Setting .value without dispatching: the map is the source of truth and
       // an event here would race the gesture that caused it.
       AXES.forEach(({axis}, i) => {
-        const input = inputs.get(axis);
         const rounded = Math.round(next[i]);
+        const input = inputs.get(axis);
         if (input && Number(input.value) !== rounded) input.value = String(rounded);
+        const value = values.get(axis);
+        if (value) value.textContent = formatAngle(rounded);
       });
     },
     onThemeChange(resolved) {
@@ -199,11 +215,19 @@ export async function mount(host, options = {}) {
   // One slider per degree of freedom. Dragging can reach any orientation, but
   // only with a pointer; sliders make each axis reachable by keyboard and by
   // touch, and show the reader what the drag is actually doing.
-  const inputs = new Map();
+  const axes = document.createElement("div");
+  axes.className = "eq-axes";
+
   for (const {axis, label, hint, min, max} of AXES) {
-    const wrap = document.createElement("label");
-    wrap.className = "eq-axis";
-    wrap.append(`${label} `);
+    const index = AXES.findIndex((a) => a.axis === axis);
+    const row = document.createElement("label");
+    row.className = "eq-axis";
+    row.dataset.axis = axis;
+
+    const name = document.createElement("span");
+    name.className = "eq-axis-name";
+    name.textContent = label;
+    row.appendChild(name);
 
     const input = document.createElement("input");
     input.type = "range";
@@ -211,17 +235,24 @@ export async function mount(host, options = {}) {
     input.min = String(min);
     input.max = String(max);
     input.step = "1";
-    input.value = String(Math.round(rotation[AXES.findIndex((a) => a.axis === axis)] ?? 0));
+    input.value = String(Math.round(rotation[index] ?? 0));
     input.setAttribute("aria-label", `${label} — ${hint}`);
     input.title = `${label} — ${hint}`;
     input.addEventListener("input", () => {
-      const next = AXES.map(({axis: a}) => Number(inputs.get(a).value));
-      map.setRotationTo(next);
+      map.setRotationTo(AXES.map(({axis: a}) => Number(inputs.get(a).value)));
     });
     inputs.set(axis, input);
-    wrap.appendChild(input);
-    controls.appendChild(wrap);
+    row.appendChild(input);
+
+    const value = document.createElement("span");
+    value.className = "eq-value";
+    value.textContent = formatAngle(rotation[index] ?? 0);
+    values.set(axis, value);
+    row.appendChild(value);
+
+    axes.appendChild(row);
   }
+  controls.appendChild(axes);
 
   const themeButtons = document.createElement("div");
   themeButtons.className = "eq-theme";

@@ -15,7 +15,7 @@ every country still covers its true share of the page.*
 |---|---|
 | Drag | Swing the world under the projection. Whatever you grab stays under the cursor, over the poles and out the other side. |
 | ⌘-drag / Ctrl-drag | Spin the map about the viewing axis, up to fully upside down. |
-| Yaw / pitch / roll sliders | All three degrees of freedom, drivable by keyboard and touch. They track dragging live. |
+| Yaw / pitch / roll sliders | All three degrees of freedom, stacked with a live degree readout. Keyboard- and touch-drivable, and they track dragging. |
 | Hover / click | Country **or ocean** name, then its Wikipedia article. |
 | View picker | 51 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
 | Light / dark | Follows your system by default; buttons override it, and embedders can pin either. |

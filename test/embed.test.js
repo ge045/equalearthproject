@@ -411,3 +411,57 @@ describe("intro as an element attribute", () => {
     expect(el.getRotation()).toEqual([0, 0, 180]);
   });
 });
+
+const readout = (el, axis) => el.querySelector(`.eq-axis[data-axis="${axis}"] .eq-value`);
+
+describe("the axis controls", () => {
+  test("puts each axis in its own row", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    const rows = [...c.element.querySelectorAll(".eq-axis")];
+    expect(rows.map((r) => r.dataset.axis)).toEqual(["yaw", "pitch", "roll"]);
+  });
+
+  test("stacks the rows rather than placing them side by side", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    // Structural: the rows share one column container, and the stylesheet lays
+    // that container out as a column. jsdom computes no layout of its own.
+    expect(c.element.querySelector(".eq-axes")).toBeTruthy();
+    expect(STYLES).toMatch(/\.eq-axes\s*\{[^}]*flex-direction:\s*column/);
+  });
+
+  test("shows the current value for every axis", async () => {
+    const c = await mount(host(), {data: DATA, rotation: [30, -20, 90], intro: false});
+    expect(["yaw", "pitch", "roll"].map((a) => readout(c.element, a).textContent))
+      .toEqual(["30°", "−20°", "90°"]);
+  });
+
+  test("updates the readout when the map is turned", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    c.transitionTo([45, -10, 120], 0);
+    expect(["yaw", "pitch", "roll"].map((a) => readout(c.element, a).textContent))
+      .toEqual(["45°", "−10°", "120°"]);
+  });
+
+  test("updates the readout when its own slider moves", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    const yaw = slider(c.element, "yaw");
+    yaw.value = "-75";
+    yaw.dispatchEvent(new window.Event("input"));
+    expect(readout(c.element, "yaw").textContent).toBe("−75°");
+  });
+
+  test("uses a real minus sign, not a hyphen, so the column does not jitter", async () => {
+    const c = await mount(host(), {data: DATA, rotation: [-5, 0, 0], intro: false});
+    expect(readout(c.element, "yaw").textContent.startsWith("−")).toBe(true);
+  });
+
+  test("shows zero without a sign", async () => {
+    const c = await mount(host(), {data: DATA, rotation: [0, 0, 0], intro: false});
+    expect(readout(c.element, "yaw").textContent).toBe("0°");
+  });
+
+  test("reserves a fixed width so the sliders do not shift as numbers change", () => {
+    expect(STYLES).toMatch(/\.eq-value\s*\{[^}]*(min-width|width)/);
+    expect(STYLES).toMatch(/\.eq-value\s*\{[^}]*tabular-nums/);
+  });
+});
