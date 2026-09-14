@@ -50,7 +50,7 @@ under `src/.observablehq/cache/`, so later runs are instant. `npm run clean`
 drops that cache.
 
 ```bash
-npm test         # 325 tests
+npm test         # 386 tests
 npm run build    # static site -> dist/
 ```
 
