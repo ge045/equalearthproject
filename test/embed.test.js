@@ -335,21 +335,61 @@ describe("all three degrees of freedom", () => {
   });
 });
 
-describe("the info box", () => {
-  test("is present", async () => {
-    const c = await mount(host(), {data: DATA});
-    expect(c.element.querySelector(".eq-info")).toBeTruthy();
+describe("the information badges", () => {
+  const badges = (el) => [...el.querySelectorAll(".eq-badge")];
+
+  test("there are four: one for the map and one per axis", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    expect(badges(c.element)).toHaveLength(4);
   });
 
-  test("is marked with an information glyph", async () => {
-    const c = await mount(host(), {data: DATA});
-    expect(c.element.querySelector(".eq-info").textContent).toContain("ℹ");
+  test("the general one sits above the map", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    const general = c.element.querySelector(".eq-header .eq-badge");
+    const canvas = c.element.querySelector("canvas");
+    expect(general).toBeTruthy();
+    // DOM order decides what "above" means once the rows stack.
+    expect(general.compareDocumentPosition(canvas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  test("explains what the three axes do", async () => {
-    const c = await mount(host(), {data: DATA});
-    const text = c.element.querySelector(".eq-info").textContent.toLowerCase();
-    for (const word of ["yaw", "pitch", "roll", "drag"]) expect(text, word).toContain(word);
+  test("the general one opens leftwards, being at the left edge", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    expect(c.element.querySelector(".eq-header .eq-badge").dataset.align).toBe("left");
+  });
+
+  test("the general one explains the gestures", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    const text = c.element.querySelector(".eq-header .eq-badge").getAttribute("aria-label").toLowerCase();
+    for (const word of ["drag", "click", "hover"]) expect(text, word).toContain(word);
+  });
+
+  test("every axis row carries its own badge", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    for (const axis of ["yaw", "pitch", "roll"]) {
+      expect(c.element.querySelector(`.eq-axis[data-axis="${axis}"] .eq-badge`), axis).toBeTruthy();
+    }
+  });
+
+  test("each axis badge explains that axis specifically", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    for (const axis of ["yaw", "pitch", "roll"]) {
+      const text = c.element
+        .querySelector(`.eq-axis[data-axis="${axis}"] .eq-badge`)
+        .getAttribute("aria-label")
+        .toLowerCase();
+      expect(text, axis).toContain(axis);
+      expect(text.length, `${axis} explanation is too thin to be worth a badge`).toBeGreaterThan(60);
+    }
+  });
+
+  test("the bubbles are hidden until hovered or focused", () => {
+    // jsdom computes no styles, so assert the rules that do the hiding.
+    expect(STYLES).toMatch(/\.eq-bubble\s*\{[^}]*(opacity:\s*0|visibility:\s*hidden|display:\s*none)/);
+    expect(STYLES).toMatch(/\.eq-badge:hover[^{]*\.eq-bubble|\.eq-badge:focus[^{]*\.eq-bubble/);
+  });
+
+  test("the badge is drawn as a circle", () => {
+    expect(STYLES).toMatch(/\.eq-badge\s*\{[^}]*border-radius:\s*50%/);
   });
 });
 

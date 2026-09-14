@@ -22,6 +22,7 @@ every country still covers its true share of the page.*
 | Hover / click | Country **or ocean** name, then its Wikipedia article. |
 | View picker | 51 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
 | Light / dark | Follows your system by default; buttons override it, and embedders can pin either. |
+| ⓘ badges | One above the map for the gestures, one per axis. Hover or focus to read. |
 
 Because `d3.geoEqualEarth().rotate()` transforms spherical coordinates *before*
 projecting, rotating yields a genuinely **oblique** Equal Earth rather than a

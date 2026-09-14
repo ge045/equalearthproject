@@ -22,6 +22,7 @@ import {createViewPicker} from "./view-picker.js";
 import {VIEW_GROUPS} from "./views.js";
 import {resolveTheme} from "./theme.js";
 import {prefersReducedMotion} from "./motion.js";
+import {createInfoBadge} from "./info-badge.js";
 
 export const TAG = "equal-earth-map";
 
@@ -49,11 +50,33 @@ export const FAMILIAR_ROTATION = [0, 0, 0];
 export const DEFAULT_INTRO_DURATION = 4000;
 
 const AXES = [
-  {axis: "yaw", label: "Yaw", hint: "turn east–west", min: -180, max: 180},
-  // versor's Euler conversion only ever reports pitch within +/-90.
-  {axis: "pitch", label: "Pitch", hint: "tilt north–south", min: -90, max: 90},
-  {axis: "roll", label: "Roll", hint: "spin the view", min: -180, max: 180}
+  {
+    axis: "yaw", label: "Yaw", hint: "turn east–west", min: -180, max: 180,
+    about: "Yaw spins the globe about its own axis, sliding the map east or west. "
+      + "It chooses which meridian sits down the middle — the difference between an "
+      + "atlas printed in London and one printed in Tokyo."
+  },
+  {
+    // versor's Euler conversion only ever reports pitch within +/-90.
+    axis: "pitch", label: "Pitch", hint: "tilt north–south", min: -90, max: 90,
+    about: "Pitch tips the globe towards or away from you, moving the centre north "
+      + "or south. This is what carries a pole into the middle of the map, which no "
+      + "ordinary world map can show without tearing it apart."
+  },
+  {
+    axis: "roll", label: "Roll", hint: "spin the view", min: -180, max: 180,
+    about: "Roll turns the whole picture about the point facing you, so north stops "
+      + "being up. At 180° the map is upside down; anywhere in between tilts the "
+      + "grid of latitude and longitude away from the horizontal."
+  }
 ];
+
+const GENERAL_INFO =
+  "Drag the map to turn it — whatever you grab stays under the cursor, and it "
+  + "carries straight over the poles rather than stopping there. Hold ⌘ (Ctrl on "
+  + "Windows and Linux) while dragging to spin it instead. Hover any country or "
+  + "ocean to see its name, and click to read about it. The three sliders below "
+  + "are the same movement, one axis at a time.";
 
 export const STYLES = `
 :host { display: block; container-type: inline-size; }
@@ -82,7 +105,7 @@ export const STYLES = `
 }
 .eq-axes { display: flex; flex-direction: column; gap: 0.3rem; flex: 1 1 auto; max-width: 34rem; }
 /* label, slider, value — one grid so the three rows line up as a column. */
-.eq-axis { display: grid; grid-template-columns: 3.2rem 1fr auto; align-items: center; gap: 0.5rem; }
+.eq-axis { display: grid; grid-template-columns: 3.2rem auto 1fr auto; align-items: center; gap: 0.5rem; }
 .eq-axis-name { color: var(--eq-fg); }
 .eq-controls input[type="range"] { width: 100%; min-width: 4rem; accent-color: var(--eq-accent); }
 .eq-value {
@@ -90,14 +113,35 @@ export const STYLES = `
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
   color: var(--eq-fg);
 }
-.eq-info {
-  display: flex; gap: 0.5rem; align-items: flex-start;
-  font-size: 12.5px; color: var(--eq-muted); max-width: 72ch;
-  margin: 0.1rem 0 0.8rem; padding: 0.5rem 0.7rem;
-  border: 1px solid var(--eq-rule); border-radius: 4px; background: var(--eq-chip);
+.eq-header { display: flex; align-items: center; margin: 0 0 0.35rem; }
+
+/* Circled information mark. The bubble is a real element rather than a title
+   attribute: native tooltips are slow, unstyleable and never appear on focus. */
+.eq-badge {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 1.15rem; height: 1.15rem; flex: 0 0 auto;
+  border: 1px solid var(--eq-rule); border-radius: 50%;
+  background: var(--eq-chip); color: var(--eq-muted);
+  font-size: 11px; line-height: 1; cursor: help; user-select: none;
 }
-.eq-info-mark { font-size: 14px; line-height: 1.25; opacity: 0.8; }
-.eq-info strong { font-weight: 600; color: var(--eq-fg); }
+.eq-badge:hover, .eq-badge:focus-visible { border-color: var(--eq-accent); color: var(--eq-accent); }
+.eq-badge:focus-visible { outline: 2px solid var(--eq-accent); outline-offset: 2px; }
+.eq-badge-mark { pointer-events: none; }
+.eq-bubble {
+  position: absolute; bottom: calc(100% + 0.4rem); z-index: 20;
+  width: max-content; max-width: 30ch;
+  padding: 0.5rem 0.7rem; border: 1px solid var(--eq-rule); border-radius: 4px;
+  background: var(--eq-chip); color: var(--eq-fg);
+  font-size: 12.5px; line-height: 1.45; text-align: left; font-weight: 400;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  opacity: 0; visibility: hidden; transition: opacity 120ms ease;
+  pointer-events: none;
+}
+.eq-badge[data-align="left"] .eq-bubble { left: 0; }
+.eq-badge[data-align="right"] .eq-bubble { left: 50%; transform: translateX(-50%); }
+.eq-badge:hover .eq-bubble, .eq-badge:focus-visible .eq-bubble,
+.eq-badge:focus .eq-bubble { opacity: 1; visibility: visible; }
+@media (prefers-reduced-motion: reduce) { .eq-bubble { transition: none; } }
 .eq-theme { display: flex; gap: 0.25rem; margin-left: auto; }
 .eq-theme button, .view-row button {
   font: inherit; font-size: 12.5px; cursor: pointer; color: inherit;
@@ -192,6 +236,13 @@ export async function mount(host, options = {}) {
   /** A real minus sign and tabular figures, so the column never jitters. */
   const formatAngle = (degrees) => `${Math.round(degrees) < 0 ? "\u2212" : ""}${Math.abs(Math.round(degrees))}\u00b0`;
 
+  const header = document.createElement("div");
+  header.className = "eq-header";
+  // Left of, and above, the map: it explains the canvas, so it sits with it
+  // rather than down among the controls.
+  header.appendChild(createInfoBadge(GENERAL_INFO, {align: "left"}));
+  root.appendChild(header);
+
   const map = createMap({
     countries: loaded.countries.features,
     marine: loaded.marine?.features ?? [],
@@ -227,7 +278,7 @@ export async function mount(host, options = {}) {
   const axes = document.createElement("div");
   axes.className = "eq-axes";
 
-  for (const {axis, label, hint, min, max} of AXES) {
+  for (const {axis, label, hint, min, max, about} of AXES) {
     const index = AXES.findIndex((a) => a.axis === axis);
     const row = document.createElement("label");
     row.className = "eq-axis";
@@ -237,6 +288,7 @@ export async function mount(host, options = {}) {
     name.className = "eq-axis-name";
     name.textContent = label;
     row.appendChild(name);
+    row.appendChild(createInfoBadge(about));
 
     const input = document.createElement("input");
     input.type = "range";
@@ -285,17 +337,6 @@ export async function mount(host, options = {}) {
   paint(theme);
   controls.appendChild(themeButtons);
   if (showControls) root.appendChild(controls);
-
-  const info = document.createElement("p");
-  info.className = "eq-info";
-  info.innerHTML =
-    '<span class="eq-info-mark" aria-hidden="true">ℹ</span> '
-    + "<strong>Drag</strong> the map to turn it — it carries straight over the poles. "
-    + "<strong>⌘-drag</strong> (Ctrl on Windows and Linux) spins it. The three sliders "
-    + "are the same three degrees of freedom: <strong>yaw</strong> turns east–west, "
-    + "<strong>pitch</strong> tilts north–south, <strong>roll</strong> spins the view. "
-    + "Hover a country or an ocean for its name; click to read about it.";
-  if (showControls) root.appendChild(info);
 
   const picker = createViewPicker({
     groups: VIEW_GROUPS,
