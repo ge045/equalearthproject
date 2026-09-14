@@ -1,7 +1,9 @@
 node_modules/
 dist/
+ps/
 .observablehq/cache/
 src/.observablehq/cache/
 .DS_Store
 snapshots/
 .tmp-link/
+dist-embed/

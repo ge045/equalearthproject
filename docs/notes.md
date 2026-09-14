@@ -19,6 +19,13 @@ declares silently never renders, and `observable build` still exits 0. Put such
 code in a module under `src/components/` — modules are not compiled this way.
 See `dom.js`; `test/page-cells.test.js` guards the compiled graph.
 
+**Documentation fences are executed.** Framework runs ```js, ```html, ```tex,
+```dot, ```mermaid and ```sql blocks. A ```html block showing an embed snippet
+is not a sample — it is a live cell that injects a real `<script>` into the
+page. Worse, a literal `</script>` in such a cell closes the page's own inline
+module early, and the browser reports "Unexpected end of input" while
+`observable build` still exits 0. Use ```html run=false for samples.
+
 **`view()`, not `viewof`.** `viewof` is notebook-only syntax.
 
 **Browser modules import d3 as `npm:d3`.** `vitest.config.js` aliases the `npm:`
@@ -67,6 +74,32 @@ index to `properties.colour`; read it through `paletteColour()` in `scene.js`.
 Never re-derive a fill from the key, or the browser and `scripts/snapshot.js`
 drift apart, which they once did silently.
 
+## Embedding
+
+**The page uses the same `<equal-earth-map>` an embedder would.** That is
+deliberate: a separate "embed build" would be a second code path that nobody
+exercises until it breaks. `src/index.md` only loads data and calls `mount()`.
+
+**Everything renders in a shadow root**, styles included. An embed lands in a
+page whose CSS was never seen and must not be disturbed — which is also why the
+picker CSS lives in `equal-earth-element.js` rather than in the page.
+
+**Never evaluate `class X extends HTMLElement` at module scope.** It runs on
+import, so the module becomes unloadable anywhere without a DOM — Node, the
+snapshot script, and the link check all break. Build the class inside
+`register()` instead.
+
+**One constructor cannot be registered under two tag names.** Caching a single
+class means any second, custom tag silently fails; `defineElementClass()`
+returns a fresh class per call.
+
+**`map.js` imports `d3-geo`, `d3-drag` and `d3-selection`, not `d3`.** Pulling
+the whole of d3 into the embed bundle adds a few hundred kilobytes of unused
+scales and shapes.
+
+**esbuild does not understand Framework's `npm:` protocol.** `build/embed.js`
+rewrites those specifiers with a resolve plugin.
+
 ## Rotation
 
 **Rotation is quaternion-based (`versor`), not Euler increments.** Adding degrees
@@ -110,6 +143,11 @@ rather than asserting on coordinate order by eye.
 constructor rejects the global window as a `Window` under vitest. Construct the
 event without `view`, then `Object.defineProperty(ev, "view", {value: window})`.
 See `dragCanvas()` in `test/create-map.test.js`.
+
+**Scanning bundled JavaScript with a regex will lie to you.** A check for bare
+import statements matched the word "import" inside an ocean description in the
+view catalogue. Load the artefact from a directory with no `node_modules` above
+it instead — an unbundled dependency then genuinely fails to resolve.
 
 **A fake `requestAnimationFrame` must not run callbacks synchronously.** An
 animation will recurse to completion inside a single call, so every duration

@@ -18,7 +18,8 @@
     "clean": "rimraf src/.observablehq/cache",
     "test": "vitest run",
     "test:watch": "vitest",
-    "snapshot": "node scripts/snapshot.js"
+    "snapshot": "node scripts/snapshot.js",
+    "build:embed": "node build/embed.js"
   },
   "dependencies": {
     "@observablehq/framework": "^1.13.3",
@@ -31,6 +32,7 @@
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "rimraf": "^5.0.10",
     "vitest": "^2.1.9"
   },

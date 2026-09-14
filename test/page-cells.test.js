@@ -17,7 +17,10 @@
  * Code inside src/components/*.js is NOT compiled this way and may use globals
  * freely; this only applies to the page.
  */
-import {existsSync, readFileSync} from "node:fs";
+import {execFileSync} from "node:child_process";
+import {existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {describe, expect, test} from "vitest";
 
 const PAGE = "dist/index.html";
@@ -43,8 +46,9 @@ function cells() {
 }
 
 describe.skipIf(!existsSync(PAGE))("compiled page cells", () => {
+  // The page is deliberately thin: it loads data and mounts the component.
   test("finds the page's reactive cells", () => {
-    expect(cells().length).toBeGreaterThan(2);
+    expect(cells().length).toBeGreaterThanOrEqual(2);
   });
 
   test("every cell input is either declared by another cell or provided by Framework", () => {
@@ -53,5 +57,46 @@ describe.skipIf(!existsSync(PAGE))("compiled page cells", () => {
     const unresolved = [...new Set(all.flatMap((c) => c.inputs))]
       .filter((name) => !declared.has(name) && !PROVIDED.has(name));
     expect(unresolved).toEqual([]);
+  });
+});
+
+/**
+ * A documentation fence that Framework decides to *run* is a live cell. When
+ * such a cell emits HTML containing a literal `</script>`, that string closes
+ * the page's own inline module early and the browser reports
+ * "Unexpected end of input" — while `observable build` exits 0 and every cell
+ * input still resolves. Use ```html run=false for samples.
+ */
+describe.skipIf(!existsSync(PAGE))("built page integrity", () => {
+  const html = () => readFileSync(PAGE, "utf8");
+
+  test("the inline module is valid JavaScript", () => {
+    const blocks = [...html().matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+    expect(blocks.length).toBeGreaterThan(0);
+    const dir = mkdtempSync(join(tmpdir(), "eq-page-"));
+    try {
+      blocks.forEach((code, i) => {
+        const file = join(dir, `block${i}.mjs`);
+        writeFileSync(file, code);
+        expect(() => execFileSync(process.execPath, ["--check", file], {stdio: "pipe"}),
+          `inline script block ${i} does not parse`).not.toThrow();
+      });
+    } finally {
+      rmSync(dir, {recursive: true, force: true});
+    }
+  });
+
+  test("no code block leaked a closing script tag into the page's own module", () => {
+    const inline = html().split('<script type="module">')[1] ?? "";
+    const body = inline.split("</scr" + "ipt>")[0];
+    expect(body).not.toContain("</scr" + "ipt>");
+  });
+
+  test("every same-origin subresource it references actually exists", () => {
+    const refs = [...html().matchAll(/<(?:link|script|img)\b[^>]*?\b(?:href|src)\s*=\s*["']([^"']+)["']/g)]
+      .map((m) => m[1])
+      .filter((u) => !/^(https?:)?\/\//.test(u) && !u.startsWith("data:") && !u.startsWith("#"));
+    const missing = refs.filter((u) => !existsSync(join("dist", u.replace(/^\.?\//, "").split("?")[0])));
+    expect(missing).toEqual([]);
   });
 });

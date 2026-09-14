@@ -16,7 +16,7 @@ every country still covers its true share of the page.*
 | Roll slider | The same axis, absolute. Stays in sync with the gesture. |
 | Hover / click | Country **or ocean** name, then its Wikipedia article. |
 | View picker | 51 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
-| Light / dark | Follows your system by default. |
+| Light / dark | Follows your system by default; buttons override it, and embedders can pin either. |
 
 Because `d3.geoEqualEarth().rotate()` transforms spherical coordinates *before*
 projecting, rotating yields a genuinely **oblique** Equal Earth rather than a
@@ -44,7 +44,7 @@ under `src/.observablehq/cache/`, so later runs are instant. `npm run clean`
 drops that cache.
 
 ```bash
-npm test         # 287 tests
+npm test         # 318 tests
 npm run build    # static site -> dist/
 ```
 
@@ -68,6 +68,46 @@ around it.
   <img src="docs/img/map-light.png" alt="The map in light mode" width="49%">
   <img src="docs/img/map-dark.png" alt="The same view in dark mode" width="49%">
 </p>
+
+## Putting it on your own page
+
+The map is a self-contained custom element — no framework required on your side.
+
+```bash
+npm run build            # derives the map data
+npm run build:embed      # -> dist-embed/equal-earth.js (83 kB) + dist-embed/data/
+```
+
+Serve both, then:
+
+```html
+<script type="module" src="/equal-earth.js"></script>
+<equal-earth-map data-base="/equal-earth-data" theme="auto"></equal-earth-map>
+```
+
+Or drive it yourself:
+
+```js
+import {mount} from "/equal-earth.js";
+
+const controller = await mount(document.querySelector("#map"), {
+  dataBase: "/equal-earth-data",
+  theme: "dark",            // "auto" | "light" | "dark"
+  rotation: [0, 0, 180]
+});
+
+controller.setTheme("auto");
+controller.transitionTo([-10, -46, 0]);
+controller.destroy();
+```
+
+Everything renders inside a shadow root, so the map cannot disturb your styles
+and your styles cannot disturb the map. The map data stays external — it is
+about 4.8 MB — so `data-base` points at wherever you serve it from.
+
+This project's own page mounts the same component, so the embedding path is
+exercised every time the site is opened rather than being a second, untested
+way of assembling the same parts.
 
 ## Data
 
