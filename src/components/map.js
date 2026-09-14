@@ -15,7 +15,7 @@ import {HitTester} from "./picker.js";
 import {countryKey, lookupCountry} from "./registry.js";
 import {THEMES, drawScene} from "./scene.js";
 import {resolveTheme, watchTheme} from "./theme.js";
-import {DEFAULT_SENSITIVITY, freeRotation, rollBy, slerpRotation, withRoll} from "./rotation.js";
+import {DEFAULT_SENSITIVITY, clampPitch, freeRotation, normalizeAngle, rollBy, slerpRotation, withRoll} from "./rotation.js";
 
 /**
  * Build the interactive map element.
@@ -37,7 +37,7 @@ export function createMap({
   initialRotation = [0, 0, 0],
   theme: themePreference = "auto",
   onThemeChange,
-  onRollChange,
+  onRotate,
   invalidation
 } = {}) {
   const container = document.createElement("div");
@@ -125,14 +125,15 @@ export function createMap({
   const hitTester = new HitTester(hitContext, width, height);
   let stopWatchingTheme = watchTheme(themePreference, applyTheme);
 
-  function setRotation(next, {notifyRoll = true} = {}) {
-    const rollChanged = notifyRoll && next[2] !== rotation[2];
+  function setRotation(next) {
     rotation = next;
     sceneDirty = hitDirty = true;
     schedule();
-    // Free rotation changes roll too, so the slider has to be told or it will
-    // snap the map back the next time it is touched.
-    if (rollChanged) onRollChange?.(rotation[2]);
+    // Every change is reported, including each frame of a transition, so
+    // external controls can track the map rather than drift out of step with
+    // it. A copy goes out: a listener must not be able to reach in and mutate
+    // the rotation we are about to draw.
+    onRotate?.([...rotation]);
   }
 
   function applyTheme(next) {
@@ -267,11 +268,9 @@ export function createMap({
    */
   container.transitionTo = (target, duration = 750) => {
     stopTransition();
-    const rollBefore = rotation[2];
     const finish = () => {
-      setRotation([...target], {notifyRoll: false});
+      setRotation([...target]);
       transitionFrame = null;
-      if (target[2] !== rollBefore) onRollChange?.(target[2]);
     };
 
     if (duration <= 0) return finish();
@@ -281,7 +280,7 @@ export function createMap({
     const step = () => {
       const t = Math.min(1, (performance.now() - started) / duration);
       if (t >= 1) return finish();
-      setRotation(slerpRotation(from, target, easeInOut(t)), {notifyRoll: false});
+      setRotation(slerpRotation(from, target, easeInOut(t)));
       transitionFrame = requestAnimationFrame(step);
     };
     transitionFrame = requestAnimationFrame(step);
@@ -302,10 +301,18 @@ export function createMap({
 
   container.setRoll = (roll) => {
     const next = withRoll(rotation, roll);
-    if (next[2] === rotation[2]) return; // already there; do not echo
-    rotation = next;
-    sceneDirty = hitDirty = true;
-    schedule();
+    if (next[2] === rotation[2]) return; // already there
+    setRotation(next);
+  };
+
+  /**
+   * Jump straight to an orientation. Pitch is clamped to the range versor's
+   * Euler conversion can actually represent (+/-90), so a control cannot drive
+   * the map somewhere it will immediately report differently.
+   */
+  container.setRotationTo = ([yaw, pitch, roll]) => {
+    stopTransition();
+    setRotation([normalizeAngle(yaw), clampPitch(pitch), normalizeAngle(roll)]);
   };
   schedule();
   return container;

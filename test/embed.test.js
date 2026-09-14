@@ -32,7 +32,12 @@ function stubCanvas() {
 
 beforeEach(() => {
   stubCanvas();
-  globalThis.requestAnimationFrame = (cb) => { cb(1); return 1; };
+  // A synchronous rAF must still advance the clock, or the opening drift
+  // recurses once per frame for its whole duration and blows the stack.
+  // Individual tests that care about the animation install a real frame queue.
+  let clock = 0;
+  vi.stubGlobal("performance", {now: () => (clock += 500)});
+  globalThis.requestAnimationFrame = (cb) => { cb(clock); return 1; };
   globalThis.cancelAnimationFrame = () => {};
   vi.stubGlobal("matchMedia", () => ({matches: false, addEventListener() {}, removeEventListener() {}}));
 });
@@ -255,5 +260,154 @@ describe("environments without a DOM", () => {
     register();
     expect(register("eq-custom-tag")).toBe(true);
     expect(customElements.get("eq-custom-tag")).toBeTruthy();
+  });
+});
+
+/** A real frame queue: a synchronous rAF lets a transition finish inside one call. */
+function frameRunner(msPerFrame = 100) {
+  let now = 0, nextId = 1;
+  const queue = new Map();
+  vi.stubGlobal("performance", {now: () => now});
+  globalThis.requestAnimationFrame = (cb) => { queue.set(nextId, cb); return nextId++; };
+  globalThis.cancelAnimationFrame = (id) => queue.delete(id);
+  return {
+    frame() {
+      now += msPerFrame;
+      const batch = [...queue.values()];
+      queue.clear();
+      for (const cb of batch) cb(now);
+    },
+    drain(max = 500) { let n = 0; while (queue.size && n++ < max) this.frame(); }
+  };
+}
+
+const host = () => document.body.appendChild(document.createElement("div"));
+const sliders = (el) => [...el.querySelectorAll('input[type="range"]')];
+const slider = (el, axis) => el.querySelector(`input[type="range"][data-axis="${axis}"]`);
+
+describe("all three degrees of freedom", () => {
+  test("offers a slider per axis", () => {
+    return mount(host(), {data: DATA}).then((c) => {
+      expect(sliders(c.element).map((s) => s.dataset.axis)).toEqual(["yaw", "pitch", "roll"]);
+    });
+  });
+
+  test("gives each slider the range its axis can actually take", async () => {
+    const c = await mount(host(), {data: DATA});
+    expect([slider(c.element, "yaw").min, slider(c.element, "yaw").max]).toEqual(["-180", "180"]);
+    // versor's Euler conversion only ever reports pitch within +/-90.
+    expect([slider(c.element, "pitch").min, slider(c.element, "pitch").max]).toEqual(["-90", "90"]);
+    expect([slider(c.element, "roll").min, slider(c.element, "roll").max]).toEqual(["-180", "180"]);
+  });
+
+  test("starts each slider on the opening orientation", async () => {
+    const c = await mount(host(), {data: DATA, rotation: [30, -20, 90], intro: false});
+    expect(sliders(c.element).map((s) => Number(s.value))).toEqual([30, -20, 90]);
+  });
+
+  test("turns the map when a slider moves", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    const yaw = slider(c.element, "yaw");
+    yaw.value = "60";
+    yaw.dispatchEvent(new window.Event("input"));
+    expect(c.getRotation()[0]).toBe(60);
+  });
+
+  test("drives pitch independently of yaw", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    const pitch = slider(c.element, "pitch");
+    pitch.value = "-45";
+    pitch.dispatchEvent(new window.Event("input"));
+    expect(c.getRotation()[1]).toBe(-45);
+  });
+
+  test("follows the map when a preset view is chosen", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    c.transitionTo([90, -30, 45], 0);
+    expect(sliders(c.element).map((s) => Number(s.value))).toEqual([90, -30, 45]);
+  });
+
+  test("every slider carries a visible label", async () => {
+    const c = await mount(host(), {data: DATA});
+    for (const axis of ["yaw", "pitch", "roll"]) {
+      expect(slider(c.element, axis).getAttribute("aria-label"), axis).toBeTruthy();
+    }
+  });
+});
+
+describe("the info box", () => {
+  test("is present", async () => {
+    const c = await mount(host(), {data: DATA});
+    expect(c.element.querySelector(".eq-info")).toBeTruthy();
+  });
+
+  test("is marked with an information glyph", async () => {
+    const c = await mount(host(), {data: DATA});
+    expect(c.element.querySelector(".eq-info").textContent).toContain("ℹ");
+  });
+
+  test("explains what the three axes do", async () => {
+    const c = await mount(host(), {data: DATA});
+    const text = c.element.querySelector(".eq-info").textContent.toLowerCase();
+    for (const word of ["yaw", "pitch", "roll", "drag"]) expect(text, word).toContain(word);
+  });
+});
+
+describe("the opening drift", () => {
+  test("starts from the familiar north-up view", async () => {
+    const frames = frameRunner();
+    const c = await mount(host(), {data: DATA, rotation: [0, 0, 180], introDuration: 1000});
+    expect(c.getRotation()).toEqual([0, 0, 0]);
+  });
+
+  test("arrives at the configured opening view", async () => {
+    const frames = frameRunner();
+    const c = await mount(host(), {data: DATA, rotation: [0, 0, 180], introDuration: 1000});
+    frames.drain();
+    expect(c.getRotation()).toEqual([0, 0, 180]);
+  });
+
+  test("passes through intermediate orientations rather than cutting", async () => {
+    const frames = frameRunner(100);
+    const c = await mount(host(), {data: DATA, rotation: [0, 0, 180], introDuration: 1000});
+    frames.frame();
+    frames.frame();
+    const roll = c.getRotation()[2];
+    expect(roll).not.toBe(0);
+    expect(Math.abs(roll)).toBeLessThan(180);
+  });
+
+  // A large unrequested movement is exactly what this preference is for.
+  test("does not drift at all when the reader asked for reduced motion", async () => {
+    vi.stubGlobal("matchMedia", (q) => ({
+      matches: q.includes("reduced-motion"), addEventListener() {}, removeEventListener() {}
+    }));
+    const c = await mount(host(), {data: DATA, rotation: [0, 0, 180], introDuration: 1000});
+    expect(c.getRotation()).toEqual([0, 0, 180]);
+  });
+
+  test("can be switched off outright", async () => {
+    const c = await mount(host(), {data: DATA, rotation: [0, 0, 180], intro: false});
+    expect(c.getRotation()).toEqual([0, 0, 180]);
+  });
+
+  test("leaves the sliders showing the destination once it settles", async () => {
+    const frames = frameRunner();
+    const c = await mount(host(), {data: DATA, rotation: [0, 0, 180], introDuration: 1000});
+    frames.drain();
+    expect(Number(slider(c.element, "roll").value)).toBe(180);
+  });
+});
+
+describe("intro as an element attribute", () => {
+  test('intro="false" opens directly on the target', async () => {
+    register();
+    const el = document.createElement(TAG);
+    el.data = DATA;
+    el.setAttribute("rotation", "0, 0, 180");
+    el.setAttribute("intro", "false");
+    document.body.appendChild(el);
+    await el.ready;
+    expect(el.getRotation()).toEqual([0, 0, 180]);
   });
 });

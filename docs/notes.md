@@ -117,6 +117,18 @@ scales and shapes.
 **esbuild does not understand Framework's `npm:` protocol.** `build/embed.js`
 rewrites those specifiers with a resolve plugin.
 
+## Motion
+
+**The opening drift respects `prefers-reduced-motion`.** Turning the whole globe
+across the screen unprompted is exactly the kind of movement that preference
+exists to suppress, and a genuine trigger for vestibular disorders. When it is
+set the map starts where it means to end.
+
+**A synchronous fake `requestAnimationFrame` must still advance a clock.** An
+animation driven by `performance.now()` otherwise recurses once per frame for
+its entire duration and blows the stack — a four-second intro overflowed the
+whole test file.
+
 ## Rotation
 
 **Rotation is quaternion-based (`versor`), not Euler increments.** Adding degrees

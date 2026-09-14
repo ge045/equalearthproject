@@ -21,11 +21,30 @@ import {createMap} from "./map.js";
 import {createViewPicker} from "./view-picker.js";
 import {VIEW_GROUPS} from "./views.js";
 import {resolveTheme} from "./theme.js";
+import {prefersReducedMotion} from "./motion.js";
 
 export const TAG = "equal-earth-map";
 
 /** Opening view: Greenwich centred, map inverted. North is down. */
 export const DEFAULT_ROTATION = [0, 0, 180];
+
+/**
+ * Where the opening drift starts: the north-up, Atlantic-centred view everyone
+ * already recognises. Beginning there and turning to DEFAULT_ROTATION makes the
+ * point of the project in one movement — it shows that the familiar view is one
+ * orientation among many, rather than asserting it in prose.
+ */
+export const FAMILIAR_ROTATION = [0, 0, 0];
+
+/** Milliseconds for that opening turn. */
+export const DEFAULT_INTRO_DURATION = 4000;
+
+const AXES = [
+  {axis: "yaw", label: "Yaw", hint: "turn east–west", min: -180, max: 180},
+  // versor's Euler conversion only ever reports pitch within +/-90.
+  {axis: "pitch", label: "Pitch", hint: "tilt north–south", min: -90, max: 90},
+  {axis: "roll", label: "Roll", hint: "spin the view", min: -180, max: 180}
+];
 
 export const STYLES = `
 :host { display: block; container-type: inline-size; }
@@ -49,10 +68,19 @@ export const STYLES = `
 }
 .eq-canvas-wrap { position: relative; }
 .eq-controls {
-  display: flex; align-items: center; gap: 0.5rem;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.9rem;
   margin: 0.6rem 0 0.2rem; font-size: 13px; color: var(--eq-muted);
 }
-.eq-controls input[type="range"] { flex: 1 1 12rem; max-width: 22rem; accent-color: var(--eq-accent); }
+.eq-axis { display: flex; align-items: center; gap: 0.4rem; flex: 1 1 9rem; }
+.eq-controls input[type="range"] { flex: 1 1 6rem; min-width: 5rem; accent-color: var(--eq-accent); }
+.eq-info {
+  display: flex; gap: 0.5rem; align-items: flex-start;
+  font-size: 12.5px; color: var(--eq-muted); max-width: 72ch;
+  margin: 0.1rem 0 0.8rem; padding: 0.5rem 0.7rem;
+  border: 1px solid var(--eq-rule); border-radius: 4px; background: var(--eq-chip);
+}
+.eq-info-mark { font-size: 14px; line-height: 1.25; opacity: 0.8; }
+.eq-info strong { font-weight: 600; color: var(--eq-fg); }
 .eq-theme { display: flex; gap: 0.25rem; margin-left: auto; }
 .eq-theme button, .view-row button {
   font: inherit; font-size: 12.5px; cursor: pointer; color: inherit;
@@ -119,8 +147,16 @@ export async function mount(host, options = {}) {
     height = 500,
     loadJson = defaultLoadJson,
     showControls = true,
+    intro = true,
+    introFrom = FAMILIAR_ROTATION,
+    introDuration = DEFAULT_INTRO_DURATION,
     invalidation
   } = options;
+
+  // Open on the familiar view and turn to the real one — unless the reader has
+  // asked for reduced motion, in which case start where we mean to end.
+  const drift = intro && introDuration > 0 && !prefersReducedMotion();
+  const openingRotation = drift ? introFrom : rotation;
 
   const base = String(dataBase).replace(/\/+$/, "");
   const loaded = data ?? {
@@ -137,14 +173,19 @@ export async function mount(host, options = {}) {
     countries: loaded.countries.features,
     marine: loaded.marine?.features ?? [],
     registry: loaded.registry ?? {},
-    initialRotation: rotation,
+    initialRotation: openingRotation,
     theme,
     invalidation,
     width,
     height,
-    onRollChange(value) {
-      const rounded = Math.round(value);
-      if (Number(roll.value) !== rounded) roll.value = String(rounded);
+    onRotate(next) {
+      // Setting .value without dispatching: the map is the source of truth and
+      // an event here would race the gesture that caused it.
+      AXES.forEach(({axis}, i) => {
+        const input = inputs.get(axis);
+        const rounded = Math.round(next[i]);
+        if (input && Number(input.value) !== rounded) input.value = String(rounded);
+      });
     },
     onThemeChange(resolved) {
       root.dataset.theme = resolved;
@@ -154,17 +195,33 @@ export async function mount(host, options = {}) {
 
   const controls = document.createElement("div");
   controls.className = "eq-controls";
-  const label = document.createElement("label");
-  label.textContent = "Spin";
-  const roll = document.createElement("input");
-  roll.type = "range";
-  roll.min = "-180";
-  roll.max = "180";
-  roll.step = "1";
-  roll.value = String(rotation[2] ?? 0);
-  roll.addEventListener("input", () => map.setRoll(Number(roll.value)));
-  label.appendChild(roll);
-  controls.appendChild(label);
+
+  // One slider per degree of freedom. Dragging can reach any orientation, but
+  // only with a pointer; sliders make each axis reachable by keyboard and by
+  // touch, and show the reader what the drag is actually doing.
+  const inputs = new Map();
+  for (const {axis, label, hint, min, max} of AXES) {
+    const wrap = document.createElement("label");
+    wrap.className = "eq-axis";
+    wrap.append(`${label} `);
+
+    const input = document.createElement("input");
+    input.type = "range";
+    input.dataset.axis = axis;
+    input.min = String(min);
+    input.max = String(max);
+    input.step = "1";
+    input.value = String(Math.round(rotation[AXES.findIndex((a) => a.axis === axis)] ?? 0));
+    input.setAttribute("aria-label", `${label} — ${hint}`);
+    input.title = `${label} — ${hint}`;
+    input.addEventListener("input", () => {
+      const next = AXES.map(({axis: a}) => Number(inputs.get(a).value));
+      map.setRotationTo(next);
+    });
+    inputs.set(axis, input);
+    wrap.appendChild(input);
+    controls.appendChild(wrap);
+  }
 
   const themeButtons = document.createElement("div");
   themeButtons.className = "eq-theme";
@@ -189,12 +246,25 @@ export async function mount(host, options = {}) {
   controls.appendChild(themeButtons);
   if (showControls) root.appendChild(controls);
 
+  const info = document.createElement("p");
+  info.className = "eq-info";
+  info.innerHTML =
+    '<span class="eq-info-mark" aria-hidden="true">ℹ</span> '
+    + "<strong>Drag</strong> the map to turn it — it carries straight over the poles. "
+    + "<strong>⌘-drag</strong> (Ctrl on Windows and Linux) spins it. The three sliders "
+    + "are the same three degrees of freedom: <strong>yaw</strong> turns east–west, "
+    + "<strong>pitch</strong> tilts north–south, <strong>roll</strong> spins the view. "
+    + "Hover a country or an ocean for its name; click to read about it.";
+  if (showControls) root.appendChild(info);
+
   const picker = createViewPicker({
     groups: VIEW_GROUPS,
     onSelect: (chosen) => map.transitionTo(chosen.rotation)
   });
   map.addEventListener("pointerdown", () => picker.clearSelection());
   if (showControls) root.appendChild(picker);
+
+  if (drift) map.transitionTo([...rotation], introDuration);
 
   const style = document.createElement("style");
   style.textContent = STYLES;
@@ -245,7 +315,8 @@ function defineElementClass() {
         theme: this.getAttribute("theme") ?? "auto",
         rotation: parseRotation(this.getAttribute("rotation")) ?? DEFAULT_ROTATION,
         width: Number(this.getAttribute("width")) || undefined,
-        height: Number(this.getAttribute("height")) || undefined
+        height: Number(this.getAttribute("height")) || undefined,
+        intro: this.getAttribute("intro") !== "false"
       }).then((controller) => {
         this.#controller = controller;
         return controller;

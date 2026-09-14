@@ -9,7 +9,7 @@
 import versor from "npm:versor";
 import {normalizeAngle} from "./angles.js";
 
-export {centreOn, normalizeAngle} from "./angles.js";
+export {centreOn, clampPitch, normalizeAngle} from "./angles.js";
 
 /**
  * Rotation state for the oblique Equal Earth map.

@@ -174,7 +174,7 @@ describe("rotation gestures", () => {
       glaciers: {type: "FeatureCollection", features: []},
       registry: {},
       width: 960, height: 500,
-      onRollChange: (r) => rolls.push(r)
+      onRotate: (r) => rolls.push(r[2])
     });
   }
 
@@ -247,13 +247,13 @@ describe("initial orientation", () => {
 
   test("does not announce a roll change merely for starting rolled", () => {
     const rolls = [];
-    mountWith({initialRotation: [180, 0, 180], onRollChange: (r) => rolls.push(r)});
+    mountWith({initialRotation: [180, 0, 180], onRotate: (r) => rolls.push(r[2])});
     expect(rolls).toEqual([]);
   });
 
   test("a slider set to the starting roll is a no-op", () => {
     const rolls = [];
-    const map = mountWith({initialRotation: [180, 0, 180], onRollChange: (r) => rolls.push(r)});
+    const map = mountWith({initialRotation: [180, 0, 180], onRotate: (r) => rolls.push(r[2])});
     map.setRoll(180);
     expect(map.getRotation()).toEqual([180, 0, 180]);
   });
@@ -343,22 +343,22 @@ describe("transitionTo", () => {
     expect(frames.pending).toBe(0);
   });
 
-  test("reports the final roll once, not on every frame", () => {
-    const frames = frameRunner();
-    const rolls = [];
-    const map = mountPlain({onRollChange: (r) => rolls.push(r)});
+  test("reports every frame of a transition so controls can follow it", () => {
+    const frames = frameRunner(50);
+    const seen = [];
+    const map = mountPlain({onRotate: (r) => seen.push([...r])});
     map.transitionTo([0, 0, 90], 500);
     frames.drain();
-    expect(rolls).toEqual([90]);
+    expect(seen.length).toBeGreaterThan(2);
   });
 
-  test("stays silent about roll when the target does not change it", () => {
+  test("lands its last report exactly on the target", () => {
     const frames = frameRunner();
-    const rolls = [];
-    const map = mountPlain({onRollChange: (r) => rolls.push(r)});
+    const seen = [];
+    const map = mountPlain({onRotate: (r) => seen.push([...r])});
     map.transitionTo([90, -30, 0], 500);
     frames.drain();
-    expect(rolls).toEqual([]);
+    expect(seen.at(-1)).toEqual([90, -30, 0]);
   });
 
   test("a new transition supersedes one already running", () => {
@@ -459,5 +459,61 @@ describe("theming", () => {
     await invalidation;
     system.flip(true);
     expect(map.getTheme()).toBe("light");
+  });
+});
+
+describe("reporting rotation to external controls", () => {
+  function mountReporting(seen) {
+    HTMLCanvasElement.prototype.getContext = (type, opts) =>
+      opts?.willReadFrequently ? stubContext(null) : stubContext(null);
+    return createMap({
+      countries: [country("040", "Austria")], marine: [],
+      registry: {}, width: 960, height: 500,
+      onRotate: (r) => seen.push([...r])
+    });
+  }
+
+  test("reports a drag as it happens", () => {
+    const seen = [];
+    const map = mountReporting(seen);
+    dragCanvas(map.querySelector("canvas"), [400, 250], [500, 280]);
+    expect(seen.length).toBeGreaterThan(0);
+  });
+
+  test("reports a roll gesture", () => {
+    const seen = [];
+    const map = mountReporting(seen);
+    dragCanvas(map.querySelector("canvas"), [400, 250], [500, 250], {meta: true});
+    expect(seen.at(-1)[2]).not.toBe(0);
+  });
+
+  test("reports a slider-driven roll", () => {
+    const seen = [];
+    const map = mountReporting(seen);
+    map.setRoll(45);
+    expect(seen.at(-1)).toEqual([0, 0, 45]);
+  });
+
+  test("hands out a copy, so a listener cannot mutate the map's state", () => {
+    const seen = [];
+    const map = mountReporting(seen);
+    map.setRoll(45);
+    seen.at(-1)[0] = 999;
+    expect(map.getRotation()[0]).toBe(0);
+  });
+
+  test("setRotationTo moves the map and reports it", () => {
+    const seen = [];
+    const map = mountReporting(seen);
+    map.setRotationTo([30, -20, 10]);
+    expect(map.getRotation()).toEqual([30, -20, 10]);
+    expect(seen.at(-1)).toEqual([30, -20, 10]);
+  });
+
+  test("setRotationTo clamps pitch into the range versor can represent", () => {
+    const seen = [];
+    const map = mountReporting(seen);
+    map.setRotationTo([0, 140, 0]);
+    expect(Math.abs(map.getRotation()[1])).toBeLessThanOrEqual(90);
   });
 });

@@ -27,3 +27,15 @@ export function normalizeAngle(degrees) {
 export function centreOn(lon, lat, roll = 0) {
   return [-lon, -lat, roll];
 }
+
+/**
+ * Clamp a pitch to the range versor's Euler conversion can represent.
+ *
+ * Dragging never needs this — quaternion composition has no pole to jam
+ * against — but a slider or an API caller can ask for a pitch of 140, which
+ * versor would immediately report back as something else. Clamping keeps a
+ * control and the map showing the same number.
+ */
+export function clampPitch(pitch) {
+  return Math.max(-90, Math.min(90, pitch));
+}

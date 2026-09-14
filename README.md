@@ -1,8 +1,10 @@
 # Oblique Equal Earth
 
 An equal-area world map you re-centre by **rotating the globe**, not by zooming.
-It opens **upside down on the prime meridian** — Greenwich centred, north at the
-bottom. Change that via `INITIAL_ROTATION` in `src/index.md`.
+It opens on the familiar north-up view and then **turns**, settling upside down
+on the prime meridian — Greenwich centred, north at the bottom. That one
+movement is the argument: the view you know is an orientation, not a fact.
+Readers who have asked for reduced motion get the final view immediately.
 
 ![The map in an oblique, south-up orientation](docs/example.png)
 
@@ -13,7 +15,7 @@ every country still covers its true share of the page.*
 |---|---|
 | Drag | Swing the world under the projection. Whatever you grab stays under the cursor, over the poles and out the other side. |
 | ⌘-drag / Ctrl-drag | Spin the map about the viewing axis, up to fully upside down. |
-| Roll slider | The same axis, absolute. Stays in sync with the gesture. |
+| Yaw / pitch / roll sliders | All three degrees of freedom, drivable by keyboard and touch. They track dragging live. |
 | Hover / click | Country **or ocean** name, then its Wikipedia article. |
 | View picker | 51 preset orientations in 9 groups, each with an explanation and further reading. Clicking sweeps there smoothly. |
 | Light / dark | Follows your system by default; buttons override it, and embedders can pin either. |
@@ -93,7 +95,9 @@ import {mount} from "/equal-earth.js";
 const controller = await mount(document.querySelector("#map"), {
   dataBase: "/equal-earth-data",
   theme: "dark",            // "auto" | "light" | "dark"
-  rotation: [0, 0, 180]
+  rotation: [0, 0, 180],    // where the opening turn ends
+  intro: true,              // false to skip the opening turn
+  introDuration: 4000
 });
 
 controller.setTheme("auto");
