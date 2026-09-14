@@ -44,7 +44,8 @@ const named = (name) => ALL_VIEWS.find((v) => v.name === name);
 
 const shots = [
   // The opening view: Greenwich front, upside down. Mirrors INITIAL_ROTATION.
-  {name: "00-opening-view", rotate: [0, 0, 180]},
+  {name: "00-opening-view", rotate: [12, 12, 144]},
+  {name: "00b-default-final-dark", rotate: [12, 12, 144], theme: "dark"},
   // The two stills used in the README.
   {name: "readme-light", rotate: [-10, -25, 0], theme: "light"},
   {name: "readme-dark", rotate: [-10, -25, 0], theme: "dark"},

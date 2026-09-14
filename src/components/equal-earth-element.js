@@ -25,8 +25,17 @@ import {prefersReducedMotion} from "./motion.js";
 
 export const TAG = "equal-earth-map";
 
-/** Opening view: Greenwich centred, map inverted. North is down. */
-export const DEFAULT_ROTATION = [0, 0, 180];
+/**
+ * Where the opening turn ends: an oblique view centred near 12°W 12°S and
+ * rolled 144°, which lands Africa in the middle and upside down.
+ *
+ * Deliberately oblique rather than merely inverted. A plain 180° roll is still
+ * the *normal* aspect with the page turned over — the parallels stay straight
+ * and the poles stay on the vertical axis. Bringing yaw and pitch in tilts the
+ * projection's own frame away from the graticule, which is the thing this
+ * project exists to show, and it is visible immediately in the curved grid.
+ */
+export const DEFAULT_ROTATION = [12, 12, 144];
 
 /**
  * Where the opening drift starts: the north-up, Atlantic-centred view everyone
@@ -127,7 +136,7 @@ const defaultLoadJson = async (url) => {
   return response.json();
 };
 
-/** "0, 0, 180" -> [0, 0, 180]; anything unparseable -> null. */
+/** "12, 12, 144" -> [12, 12, 144]; anything unparseable -> null. */
 export function parseRotation(text) {
   if (typeof text !== "string") return null;
   const parts = text.split(",").map((p) => Number(p.trim()));

@@ -1,8 +1,11 @@
 # Oblique Equal Earth
 
 An equal-area world map you re-centre by **rotating the globe**, not by zooming.
-It opens upside down on the prime meridian — because north-at-the-top is a
-convention about five centuries old, not a property of the planet.
+It opens on the familiar north-up view and then turns, settling on an oblique
+orientation with Africa in the middle and upside down. North-at-the-top is a
+convention about five centuries old, not a property of the planet — and the
+curved grid in the final view is the projection's own frame, tilted away from
+the Earth's.
 
 - **Drag** to swing the world under the projection — whatever you grab stays under the cursor, and you can carry it right over a pole and out the other side.
 - **⌘-drag** (Ctrl-drag on Windows/Linux) or the spin slider to roll the map about the viewing axis.

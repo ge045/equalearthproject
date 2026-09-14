@@ -465,3 +465,31 @@ describe("the axis controls", () => {
     expect(STYLES).toMatch(/\.eq-value\s*\{[^}]*tabular-nums/);
   });
 });
+
+describe("the default opening view", () => {
+  test("is the documented oblique orientation", () => {
+    expect(DEFAULT_ROTATION).toEqual([12, 12, 144]);
+  });
+
+  test("is genuinely oblique, not merely upside down", () => {
+    // A pure roll leaves yaw and pitch at zero and keeps the normal aspect.
+    const [yaw, pitch] = DEFAULT_ROTATION;
+    expect(yaw === 0 && pitch === 0).toBe(false);
+  });
+
+  test("is where an unconfigured mount ends up", async () => {
+    const c = await mount(host(), {data: DATA, intro: false});
+    expect(c.getRotation()).toEqual(DEFAULT_ROTATION);
+  });
+
+  test("is where the opening turn lands", async () => {
+    const frames = frameRunner();
+    const c = await mount(host(), {data: DATA, introDuration: 1000});
+    frames.drain();
+    expect(c.getRotation()).toEqual(DEFAULT_ROTATION);
+  });
+
+  test("keeps pitch inside the range the sliders can show", () => {
+    expect(Math.abs(DEFAULT_ROTATION[1])).toBeLessThanOrEqual(90);
+  });
+});
