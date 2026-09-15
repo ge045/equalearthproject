@@ -8,9 +8,9 @@
   "author": "Georg Ogris",
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.com/georg.ogris/equalearthproject.git"
+    "url": "git+https://github.com/ge045/equalearthproject.git"
   },
-  "homepage": "https://gitlab.com/georg.ogris/equalearthproject",
+  "homepage": "https://github.com/ge045/equalearthproject",
   "scripts": {
     "dev": "observable preview",
     "build": "observable build",

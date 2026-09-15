@@ -79,7 +79,7 @@ describe.skipIf(!built)("built site makes no third-party requests", () => {
   });
 
   test("still carries the AGPL source link the licence requires", () => {
-    expect(html()).toMatch(/<a[^>]+href="https:\/\/gitlab\.com/);
+    expect(html()).toMatch(/<a[^>]+href="https:\/\/github\.com\/ge045\/equalearthproject/);
   });
 });
 

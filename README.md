@@ -50,7 +50,7 @@ under `src/.observablehq/cache/`, so later runs are instant. `npm run clean`
 drops that cache.
 
 ```bash
-npm test         # 386 tests
+npm test         # 390 tests
 npm run build    # static site -> dist/
 ```
 
@@ -158,7 +158,7 @@ Worth knowing if you rely on this:
 - The **explanatory texts** attached to the 51 preset views are AI-written
   popular-science prose. They have not been fact-checked by a domain expert.
   Treat them as a starting point, not as a citable source.
-- The **test suite is real** — 248 tests, written test-first for most modules,
+- The **test suite is real** — 390 tests, written test-first for most modules,
   and several guard failure modes that a green build would otherwise hide. It is
   the main reason to trust the code rather than the prose.
 - Where the AI made mistakes, they are recorded in `docs/notes.md` rather than

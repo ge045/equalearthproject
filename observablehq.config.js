@@ -31,5 +31,5 @@ export default {
   footer:
     'Map data: <a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain). '
     + 'Free software under the <a href="https://www.gnu.org/licenses/agpl-3.0.html">GNU AGPL v3</a> — '
-    + '<a href="https://gitlab.com/georg.ogris/equalearthproject">source code</a>.'
+    + '<a href="https://github.com/ge045/equalearthproject">source code</a>.'
 };

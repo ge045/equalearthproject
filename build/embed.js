@@ -52,7 +52,7 @@ const result = await esbuild.build({
       "/*! Oblique Equal Earth — an interactive equal-area world map.",
       " * Copyright (C) 2026 Georg Ogris",
       " * Licensed under the GNU Affero General Public License v3 or later.",
-      " * Source: https://gitlab.com/georg.ogris/equalearthproject",
+      " * Source: https://github.com/ge045/equalearthproject",
       " */"
     ].join("\n")
   },
